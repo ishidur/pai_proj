@@ -17,6 +17,7 @@ def get_train_cfg(args):
 
     train_cfg_dict = {
         'algorithm': {
+            "class_name": "PPO",
             'clip_param': 0.2,
             'desired_kl': 0.01,
             'entropy_coef': 0.01,
@@ -36,24 +37,23 @@ def get_train_cfg(args):
             'actor_hidden_dims': [512, 256, 128],
             'critic_hidden_dims': [512, 256, 128],
             'init_noise_std': 1.0,
+            "class_name": "ActorCritic",
         },
         'runner': {
-            'algorithm_class_name': 'PPO',
             'checkpoint': -1,
             'experiment_name': args.exp_name,
             'load_run': -1,
             'log_interval': 1,
             'max_iterations': args.max_iterations,
-            'num_steps_per_env': 24,
-            'policy_class_name': 'ActorCritic',
             'record_interval': 50,
             'resume': False,
             'resume_path': None,
             'run_name': '',
-            'runner_class_name': 'runner_class_name',
-            'save_interval': 100,
         },
         'runner_class_name': 'OnPolicyRunner',
+        'num_steps_per_env': 24,
+        'save_interval': 100,
+        "empirical_normalization": None,
         'seed': 1,
     }
 

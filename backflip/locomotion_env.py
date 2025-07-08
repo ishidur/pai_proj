@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 import genesis as gs
+from genesis.engine.solvers.avatar_solver import AvatarSolver
 from genesis.engine.solvers.rigid.rigid_solver_decomp import RigidSolver
 from utils import *
 
@@ -86,7 +87,7 @@ class LocoEnv:
         )
 
         for solver in self.scene.sim.solvers:
-            if not isinstance(solver, RigidSolver):
+            if (not isinstance(solver, RigidSolver)) or isinstance(solver, AvatarSolver):
                 continue
             self.rigid_solver = solver
 
@@ -341,6 +342,7 @@ class LocoEnv:
         )
         self.common_step_counter = 0
         self.extras = {}
+        self.extras["observations"] = dict()
 
         self.terrain_heights = torch.zeros(
             (self.num_envs,),
@@ -431,7 +433,7 @@ class LocoEnv:
             device=self.device,
             dtype=gs.tc_float,
         )
-        self.com[:] = self.rigid_solver.get_links_COM([self.base_link_index,]).squeeze(dim=1)
+        self.com[:] = self.rigid_solver.get_links_root_COM([self.base_link_index,]).squeeze(dim=1)
 
         self.foot_positions[:] = self.rigid_solver.get_links_pos(self.feet_link_indices_world_frame)
         self.foot_quaternions[:] = self.rigid_solver.get_links_quat(self.feet_link_indices_world_frame)
@@ -504,7 +506,8 @@ class LocoEnv:
             self.episode_sums['termination'] += rew
 
     def get_observations(self):
-        return self.obs_history_buf
+        self.extras["observations"]["critic"] = self.obs_buf
+        return self.obs_history_buf, self.extras
 
     def get_privileged_observations(self):
         return self.privileged_obs_buf
@@ -751,10 +754,11 @@ class LocoEnv:
         self.dof_vel_list = dof_vel_list
 
         self.post_physics_step()
+        self.extras["observations"]["critic"] = self.obs_buf
 
         return (
             self.obs_history_buf,
-            self.privileged_obs_buf,
+            # self.privileged_obs_buf,
             self.rew_buf,
             self.reset_buf,
             self.extras,
