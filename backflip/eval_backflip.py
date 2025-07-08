@@ -20,7 +20,7 @@ def export_policy_as_jit(actor_critic, path, name):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--exp_name', type=str, default='backflip')
-    parser.add_argument('-v', '--vis', action='store_true', default=True)
+    parser.add_argument('-v', '--vis', action='store_true', default=False)
     parser.add_argument('-c', '--cpu', action='store_true', default=False)
     parser.add_argument('-r', '--record', action='store_true', default=False)
     parser.add_argument('--ckpt', type=int, default=1000)
@@ -62,7 +62,7 @@ def main():
         policy = runner.get_inference_policy(device='cuda:0')
 
     env.reset()
-    obs = env.get_observations()
+    obs, extras = env.get_observations()
 
     with torch.no_grad():
         stop = False
@@ -71,7 +71,7 @@ def main():
             env.start_recording(record_internal=False)
         while not stop:
             actions = policy(obs)
-            obs, _, rews, dones, infos = env.step(actions)
+            obs, rews, dones, infos = env.step(actions)
             n_frames += 1
             if args.record:
                 if n_frames == 100:

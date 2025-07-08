@@ -5,6 +5,8 @@ docker build -t genesis -f docker/Dockerfile docker
 To enter the container:
 
 ```bash
+xhost +local:root # Allow the container to access the display
+
 docker run --gpus all --rm -it \
 -e DISPLAY=$DISPLAY \
 -v /dev/dri:/dev/dri \
