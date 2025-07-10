@@ -7,7 +7,6 @@ import shutil
 import numpy as np
 import torch
 from reward_wrapper import Standup
-from locomotion_env import LocoEnv
 from rsl_rl.runners import OnPolicyRunner
 
 import genesis as gs
@@ -97,7 +96,7 @@ def get_cfgs():
         ],
         'termination_contact_link_names': ['base'],
         'penalized_contact_link_names': ['base', 'thigh', 'calf'],
-        'feet_link_names': ['foot'],
+        'feet_link_names': ['RL_foot', 'RR_foot'],
         'base_link_name': ['base'],
         # PD
         'PD_stiffness': {'joint': 70.0},
@@ -144,7 +143,7 @@ def get_cfgs():
         'coupling': False,
     }
     obs_cfg = {
-        'num_obs': 60,
+        'num_obs': 54,
         'num_history_obs': 1,
         'obs_noise': {
             'ang_vel': 0.1,
@@ -163,16 +162,12 @@ def get_cfgs():
     reward_cfg = {
         'soft_dof_pos_limit': 0.9,
         'reward_scales': {
-            'ang_vel_x': 5.0,
-            'ang_vel_z': -1.0,
-            'lin_vel_z': 20.0,
-            'orientation_control': -1.0,
-            'feet_height_before_sideflip': -30.0,
-            'height_control': -10.0,
-            'actions_symmetry': -0.1,
-            'gravity_x': -10.0,
-            'feet_distance': -1.0,
-            'action_rate': -0.001,
+            'ang_vel_y': -0.5,
+            'gravity_x': -2.0,
+            'height_control': 2.0,
+            'feet_distance': -0.1,
+            'collision': -1.,
+            'leg_angle': -0.1,
         },
     }
     command_cfg = {
@@ -187,7 +182,7 @@ def get_cfgs():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--exp_name', type=str, default='sideflip')
+    parser.add_argument('-e', '--exp_name', type=str, default='standup')
     parser.add_argument('-v', '--vis', action='store_true', default=False)
     parser.add_argument('-c', '--cpu', action='store_true', default=False)
     parser.add_argument('-B', '--num_envs', type=int, default=10000)
@@ -251,8 +246,8 @@ if __name__ == '__main__':
 
 '''
 # training
-python train_sideflip.py -e EXP_NAME
+python train_standup.py -e EXP_NAME
 
 # evaluation
-python eval_sideflip.py -e EXP_NAME --ckpt NUM_CKPT
+python eval_standup.py -e EXP_NAME --ckpt NUM_CKPT
 '''

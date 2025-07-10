@@ -5,7 +5,7 @@ import pickle
 
 import numpy as np
 import torch
-from reward_wrapper import Sideflip
+from reward_wrapper import Standup
 from rsl_rl.runners import OnPolicyRunner
 
 import genesis as gs
@@ -33,7 +33,7 @@ def main():
     )
     reward_cfg['reward_scales'] = {"feet_distance": 1}
 
-    env = Sideflip(
+    env = Standup(
         num_envs=1,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,
