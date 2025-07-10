@@ -19,7 +19,7 @@ def export_policy_as_jit(actor_critic, path, name):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--exp_name', type=str, default='backflip')
+    parser.add_argument('-e', '--exp_name', type=str, default='sideflip')
     parser.add_argument('-v', '--vis', action='store_true', default=False)
     parser.add_argument('-c', '--cpu', action='store_true', default=False)
     parser.add_argument('-r', '--record', action='store_true', default=False)
@@ -51,7 +51,7 @@ def main():
         policy.to(device='cuda:0')
     else:
         args.max_iterations = 1
-        from train_backflip import get_train_cfg
+        from train_sideflip import get_train_cfg
         runner = OnPolicyRunner(env, get_train_cfg(args), log_dir, device='cuda:0')
 
         resume_path = os.path.join(log_dir, f'model_{args.ckpt}.pt')
@@ -75,7 +75,7 @@ def main():
             n_frames += 1
             if args.record:
                 if n_frames == 100:
-                    env.stop_recording("backflip.mp4")
+                    env.stop_recording("sideflip.mp4")
                     exit()
 
 if __name__ == '__main__':

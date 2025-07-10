@@ -163,14 +163,14 @@ def get_cfgs():
     reward_cfg = {
         'soft_dof_pos_limit': 0.9,
         'reward_scales': {
-            'ang_vel_y': 5.0,
+            'ang_vel_x': 5.0,
             'ang_vel_z': -1.0,
             'lin_vel_z': 20.0,
             'orientation_control': -1.0,
-            'feet_height_before_backflip': -30.0,
+            'feet_height_before_sideflip': -30.0,
             'height_control': -10.0,
             'actions_symmetry': -0.1,
-            'gravity_y': -10.0,
+            'gravity_x': -10.0,
             'feet_distance': -1.0,
             'action_rate': -0.001,
         },
@@ -187,7 +187,7 @@ def get_cfgs():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--exp_name', type=str, default='backflip')
+    parser.add_argument('-e', '--exp_name', type=str, default='sideflip')
     parser.add_argument('-v', '--vis', action='store_true', default=False)
     parser.add_argument('-c', '--cpu', action='store_true', default=False)
     parser.add_argument('-B', '--num_envs', type=int, default=10000)
@@ -251,8 +251,8 @@ if __name__ == '__main__':
 
 '''
 # training
-python train_backflip.py -e EXP_NAME
+python train_sideflip.py -e EXP_NAME
 
 # evaluation
-python eval_backflip.py -e EXP_NAME --ckpt NUM_CKPT
+python eval_sideflip.py -e EXP_NAME --ckpt NUM_CKPT
 '''
