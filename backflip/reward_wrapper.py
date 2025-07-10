@@ -251,10 +251,10 @@ class Sideflip(Go2):
         return height_diff
 
     def _reward_actions_symmetry(self):
-        actions_diff = torch.square(self.actions[:, 0] + self.actions[:, 3])
-        actions_diff += torch.square(self.actions[:, 1:3] - self.actions[:, 4:6]).sum(dim=-1)
-        actions_diff += torch.square(self.actions[:, 6] + self.actions[:, 9])
-        actions_diff += torch.square(self.actions[:, 7:9] - self.actions[:, 10:12]).sum(dim=-1)
+        actions_diff = torch.square(self.actions[:, 0] + self.actions[:, 3]) # compare FR_hip_joint and FL_hip_joint
+        actions_diff += torch.square(self.actions[:, 1:3] - self.actions[:, 4:6]).sum(dim=-1) # compare FR_thigh_joint, FR_calf_joint and FL_thigh_joint, FL_calf_joint
+        actions_diff += torch.square(self.actions[:, 6] + self.actions[:, 9]) # compare RR_hip_joint and RL_hip_joint
+        actions_diff += torch.square(self.actions[:, 7:9] - self.actions[:, 10:12]).sum(dim=-1) # compare RR_thigh_joint, RR_calf_joint and RL_thigh_joint, RL_calf_joint
         return actions_diff
     
     def _reward_gravity_y(self):
@@ -436,15 +436,15 @@ class Sideflip(Go2):
     def _reward_height_control(self):
         # Penalize non flat base orientation
         current_time = self.episode_length_buf * self.dt
-        target_height = 0.3
+        target_height = 0.3 # standing pose
         height_diff = torch.square(target_height - self.base_pos[:, 2]) * torch.logical_or(current_time < 0.4, current_time > 1.4)
         return height_diff
 
     def _reward_actions_symmetry(self):
-        actions_diff = torch.square(self.actions[:, 0] + self.actions[:, 3])
-        actions_diff += torch.square(self.actions[:, 1:3] - self.actions[:, 4:6]).sum(dim=-1)
-        actions_diff += torch.square(self.actions[:, 6] + self.actions[:, 9])
-        actions_diff += torch.square(self.actions[:, 7:9] - self.actions[:, 10:12]).sum(dim=-1)
+        actions_diff = torch.square(self.actions[:, 0] + self.actions[:, 6])
+        actions_diff += torch.square(self.actions[:, 1:3] - self.actions[:, 7:9]).sum(dim=-1)
+        actions_diff += torch.square(self.actions[:, 3] + self.actions[:, 9])
+        actions_diff += torch.square(self.actions[:, 4:6] - self.actions[:, 10:12]).sum(dim=-1)
         return actions_diff
     
     def _reward_gravity_x(self):
