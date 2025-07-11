@@ -477,6 +477,22 @@ class Sideflip(Go2):
 
 class Standup(Go2):
 
+    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer, eval, debug, device='cuda'):
+        super().__init__(num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer, eval, debug, device)
+        
+        quat_pitch = gs_quat_from_angle_axis(0.5*torch.pi* torch.ones_like(self.episode_length_buf, device=self.device, dtype=torch.float),
+                                             torch.tensor([0, 1, 0], device=self.device, dtype=torch.float))
+
+        desired_base_quat = gs_quat_mul(quat_pitch, self.base_init_quat.reshape(1, -1).repeat(self.num_envs, 1))
+        inv_desired_base_quat = gs_inv_quat(desired_base_quat)
+        self.desired_projected_gravity = gs_transform_by_quat(self.global_gravity, inv_desired_base_quat)
+        
+        self.desired_dofs = torch.zeros([self.num_envs, 6], device=self.device)
+        self.desired_dofs[:, 1] = 1.8
+        self.desired_dofs[:, 4] = 1.8
+        self.desired_dofs[:, 2] = -0.8
+        self.desired_dofs[:, 5] = -0.8
+
     def reset_idx(self, envs_idx):
         if len(envs_idx) == 0:
             return
@@ -590,14 +606,7 @@ class Standup(Go2):
     
     def _reward_orientation_control(self):
         # Penalize non flat base orientation
-        quat_pitch = gs_quat_from_angle_axis(-0.5*torch.pi* torch.ones_like(self.episode_length_buf, device=self.device, dtype=torch.float),
-                                             torch.tensor([0, 1, 0], device=self.device, dtype=torch.float))
-
-        desired_base_quat = gs_quat_mul(quat_pitch, self.base_init_quat.reshape(1, -1).repeat(self.num_envs, 1))
-        inv_desired_base_quat = gs_inv_quat(desired_base_quat)
-        desired_projected_gravity = gs_transform_by_quat(self.global_gravity, inv_desired_base_quat)
-
-        orientation_diff = torch.sum(torch.square(self.projected_gravity - desired_projected_gravity), dim=1)
+        orientation_diff = torch.sum(torch.square(self.projected_gravity - self.desired_projected_gravity), dim=1)
 
         return orientation_diff
     
@@ -613,7 +622,7 @@ class Standup(Go2):
         return torch.abs(self.base_ang_vel[:, 2])
     
     def _reward_gravity_x(self):
-        return torch.square(self.projected_gravity[:, 0] + 1)
+        return torch.square(1 - self.projected_gravity[:, 0])
     
     def _reward_feet_distance(self):
         cur_footsteps_translated = self.foot_positions - self.base_pos.unsqueeze(1)
@@ -630,12 +639,19 @@ class Standup(Go2):
     def _reward_leg_angle(self):
         # Penalize dof positions too close to the limit
         current_time = self.episode_length_buf * self.dt
-        desired_dofs = torch.zeros([self.num_envs, 6], device=self.device)
-        desired_dofs[:, 1] = 1.8
-        desired_dofs[:, 4] = 1.8
-        desired_dofs[:, 2] = -0.8
-        desired_dofs[:, 5] = -0.8
-        return torch.square(desired_dofs-self.dof_pos[:,6:]).sum(dim=1) * (current_time > 1.0)
+        return torch.square(self.desired_dofs-self.dof_pos[:,6:]).sum(dim=1) * (current_time > 1.0)
+
+    def _reward_feet_air_time(self):
+        # Reward long steps
+        contact = self.link_contact_forces[:, self.feet_link_indices, 2] > 1.
+        contact_filt = torch.logical_or(contact, self.last_contacts) 
+        self.last_contacts = contact
+        first_contact = (self.feet_air_time > 0.) * contact_filt
+        self.feet_air_time += self.dt
+        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
+        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        self.feet_air_time *= ~contact_filt
+        return rew_airTime
 
     def _reward_collision(self):
         # Penalize collisions on selected bodies

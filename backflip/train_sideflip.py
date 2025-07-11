@@ -6,7 +6,7 @@ import shutil
 
 import numpy as np
 import torch
-from reward_wrapper import Standup
+from reward_wrapper import Sideflip
 from locomotion_env import LocoEnv
 from rsl_rl.runners import OnPolicyRunner
 
@@ -217,7 +217,7 @@ def main():
         shutil.rmtree(log_dir)
     os.makedirs(log_dir, exist_ok=True)
 
-    env = Standup(
+    env = Sideflip(
         num_envs=args.num_envs,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,

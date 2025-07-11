@@ -162,12 +162,12 @@ def get_cfgs():
     reward_cfg = {
         'soft_dof_pos_limit': 0.9,
         'reward_scales': {
-            'ang_vel_y': -0.5,
+            'ang_vel_y': -0.1,
             'gravity_x': -2.0,
             'height_control': 2.0,
-            'feet_distance': -0.1,
+            'feet_air_time': 1.0,
             'collision': -1.,
-            'leg_angle': -0.1,
+            # 'leg_angle': -0.1,
         },
     }
     command_cfg = {
