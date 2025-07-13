@@ -13,7 +13,9 @@ try:
         if metadata.version("rsl-rl-lib") != "2.2.4":
             raise ImportError
 except (metadata.PackageNotFoundError, ImportError) as e:
-    raise ImportError("Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'.") from e
+    raise ImportError(
+        "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
+    ) from e
 from rsl_rl.runners import OnPolicyRunner
 
 import genesis as gs
@@ -30,7 +32,9 @@ def main():
     gs.init()
 
     log_dir = f"logs/{args.exp_name}"
-    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(f"logs/{args.exp_name}/cfgs.pkl", "rb"))
+    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(
+        open(f"logs/{args.exp_name}/cfgs.pkl", "rb")
+    )
     reward_cfg["reward_scales"] = {}
 
     env = Go2Env(
@@ -39,7 +43,7 @@ def main():
         obs_cfg=obs_cfg,
         reward_cfg=reward_cfg,
         command_cfg=command_cfg,
-        show_viewer=False,
+        show_viewer=True,
     )
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
@@ -48,13 +52,13 @@ def main():
     policy = runner.get_inference_policy(device=gs.device)
 
     obs, _ = env.reset()
-    env.cam.start_recording()
+    # env.cam.start_recording()
     with torch.no_grad():
         for i in range(300):
             actions = policy(obs)
             obs, rews, dones, infos = env.step(actions)
-            env.cam.render()
-    env.cam.stop_recording(save_to_filename="go2_walking.mp4", fps=60)
+            # env.cam.render()
+    # env.cam.stop_recording(save_to_filename="go2_walking.mp4", fps=60)
 
 
 if __name__ == "__main__":

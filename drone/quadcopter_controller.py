@@ -22,17 +22,35 @@ class PIDController:
 
 class DronePIDController:
     def __init__(self, drone: DroneEntity, dt, base_rpm, pid_params):
-        self.__pid_pos_x = PIDController(kp=pid_params[0][0], ki=pid_params[0][1], kd=pid_params[0][2])
-        self.__pid_pos_y = PIDController(kp=pid_params[1][0], ki=pid_params[1][1], kd=pid_params[1][2])
-        self.__pid_pos_z = PIDController(kp=pid_params[2][0], ki=pid_params[2][1], kd=pid_params[2][2])
+        self.__pid_pos_x = PIDController(
+            kp=pid_params[0][0], ki=pid_params[0][1], kd=pid_params[0][2]
+        )
+        self.__pid_pos_y = PIDController(
+            kp=pid_params[1][0], ki=pid_params[1][1], kd=pid_params[1][2]
+        )
+        self.__pid_pos_z = PIDController(
+            kp=pid_params[2][0], ki=pid_params[2][1], kd=pid_params[2][2]
+        )
 
-        self.__pid_vel_x = PIDController(kp=pid_params[3][0], ki=pid_params[3][1], kd=pid_params[3][2])
-        self.__pid_vel_y = PIDController(kp=pid_params[4][0], ki=pid_params[4][1], kd=pid_params[4][2])
-        self.__pid_vel_z = PIDController(kp=pid_params[5][0], ki=pid_params[5][1], kd=pid_params[5][2])
+        self.__pid_vel_x = PIDController(
+            kp=pid_params[3][0], ki=pid_params[3][1], kd=pid_params[3][2]
+        )
+        self.__pid_vel_y = PIDController(
+            kp=pid_params[4][0], ki=pid_params[4][1], kd=pid_params[4][2]
+        )
+        self.__pid_vel_z = PIDController(
+            kp=pid_params[5][0], ki=pid_params[5][1], kd=pid_params[5][2]
+        )
 
-        self.__pid_att_roll = PIDController(kp=pid_params[6][0], ki=pid_params[6][1], kd=pid_params[6][2])
-        self.__pid_att_pitch = PIDController(kp=pid_params[7][0], ki=pid_params[7][1], kd=pid_params[7][2])
-        self.__pid_att_yaw = PIDController(kp=pid_params[8][0], ki=pid_params[8][1], kd=pid_params[8][2])
+        self.__pid_att_roll = PIDController(
+            kp=pid_params[6][0], ki=pid_params[6][1], kd=pid_params[6][2]
+        )
+        self.__pid_att_pitch = PIDController(
+            kp=pid_params[7][0], ki=pid_params[7][1], kd=pid_params[7][2]
+        )
+        self.__pid_att_yaw = PIDController(
+            kp=pid_params[8][0], ki=pid_params[8][1], kd=pid_params[8][2]
+        )
 
         self.drone = drone
         self.__dt = dt
@@ -84,7 +102,9 @@ class DronePIDController:
         pitch_del = self.__pid_att_pitch.update(err_pitch, self.__dt)
         yaw_del = self.__pid_att_yaw.update(err_yaw, self.__dt)
 
-        prop_rpms = self.__mixer(thrust_des, roll_del, pitch_del, yaw_del, x_vel_del, y_vel_del)
+        prop_rpms = self.__mixer(
+            thrust_des, roll_del, pitch_del, yaw_del, x_vel_del, y_vel_del
+        )
         prop_rpms = prop_rpms.cpu()
         prop_rpms - prop_rpms.numpy()
 

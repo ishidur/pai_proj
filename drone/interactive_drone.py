@@ -10,7 +10,9 @@ class DroneController:
     def __init__(self):
         self.thrust = 14468.429183500699  # Base hover RPM - constant hover
         self.rotation_delta = 200  # Differential RPM for rotation
-        self.thrust_delta = 10  # Amount to change thrust by when accelerating/decelerating
+        self.thrust_delta = (
+            10  # Amount to change thrust by when accelerating/decelerating
+        )
         self.running = True
         self.rpms = [self.thrust] * 4
         self.pressed_keys = set()
@@ -111,8 +113,20 @@ def run_sim(scene, drone, controller):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--vis", action="store_true", default=True, help="Enable visualization (default: True)")
-    parser.add_argument("-m", "--mac", action="store_true", default=False, help="Running on MacOS (default: False)")
+    parser.add_argument(
+        "-v",
+        "--vis",
+        action="store_true",
+        default=True,
+        help="Enable visualization (default: True)",
+    )
+    parser.add_argument(
+        "-m",
+        "--mac",
+        action="store_true",
+        default=False,
+        help="Running on MacOS (default: False)",
+    )
     args = parser.parse_args()
 
     # Initialize Genesis
@@ -162,7 +176,9 @@ def main():
     print("Initial hover RPM:", controller.thrust)
 
     # Start keyboard listener
-    listener = keyboard.Listener(on_press=controller.on_press, on_release=controller.on_release)
+    listener = keyboard.Listener(
+        on_press=controller.on_press, on_release=controller.on_release
+    )
     listener.start()
 
     if args.mac:

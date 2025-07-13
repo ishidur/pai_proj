@@ -12,7 +12,9 @@ try:
         if metadata.version("rsl-rl-lib") != "2.2.4":
             raise ImportError
 except (metadata.PackageNotFoundError, ImportError) as e:
-    raise ImportError("Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'.") from e
+    raise ImportError(
+        "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
+    ) from e
 from rsl_rl.runners import OnPolicyRunner
 
 import genesis as gs
@@ -154,7 +156,9 @@ def main():
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
 
-    runner.learn(num_learning_iterations=args.max_iterations, init_at_random_ep_len=True)
+    runner.learn(
+        num_learning_iterations=args.max_iterations, init_at_random_ep_len=True
+    )
 
 
 if __name__ == "__main__":
