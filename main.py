@@ -1,5 +1,6 @@
 import genesis as gs
 import numpy as np
+from itertools import chain
 
 gs.init(backend=gs.gpu)
 
@@ -10,7 +11,7 @@ scene = gs.Scene(
         camera_fov=40,
         res=(640, 640),
     ),
-    show_viewer=False,
+    show_viewer=True,
 )
 plane = scene.add_entity(gs.morphs.Plane())
 excavator = scene.add_entity(
@@ -18,13 +19,6 @@ excavator = scene.add_entity(
     gs.morphs.URDF(file="./assets/zx120/zx120.urdf", pos=[0, 0, 0]),
 )
 
-floating_camera = scene.add_camera(
-    pos=np.array([20, 20, 20]),
-    lookat=np.array([0, 0, 0]),
-    res=(640, 640),
-    fov=40,
-    GUI=False,
-)
 scene.build()
 
 jnt_names = [
@@ -35,25 +29,18 @@ jnt_names = [
     "bucket_joint",
     "bucket_end_joint",
 ]
-dofs_idx = [excavator.get_joint(name).dof_idx_local for name in jnt_names]
+dofs_idx = list(
+    chain.from_iterable(
+        [excavator.get_joint(name).dofs_idx_local for name in jnt_names]
+    )
+)
 print(dofs_idx)
-# set positional gains
-excavator.set_dofs_kp(
-    kp=np.array([4500, 3500, 3500, 2000, 2000]),
-    dofs_idx_local=dofs_idx,
-)
-# set velocity gains
-excavator.set_dofs_kv(
-    kv=np.array([450, 350, 350, 200, 200]),
-    dofs_idx_local=dofs_idx,
-)
 # set force range for safety
 excavator.set_dofs_force_range(
     lower=np.array([-100, -100, -100, -100, -100]),
     upper=np.array([100, 100, 100, 100, 100]),
     dofs_idx_local=dofs_idx,
 )
-floating_camera.start_recording()
 
 for i in range(3000):
     if i == 0:
@@ -94,6 +81,3 @@ for i in range(3000):
         excavator.control_dofs_position(np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx)
 
     scene.step()
-    floating_camera.render()
-
-floating_camera.stop_recording("excavator_move_test.mp4", fps = 60)
