@@ -96,7 +96,7 @@ class Zx120Env:
         self.motors_dof_idx = list(
             chain.from_iterable(
                 [
-                    self.robot.get_joint(name).dofs_start
+                    self.robot.get_joint(name).dofs_idx_local
                     for name in self.env_cfg["joint_names"]
                 ]
             )
@@ -113,6 +113,12 @@ class Zx120Env:
             )
 
         # initialize buffers
+        self.base_pos = torch.zeros(
+            (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
+        )
+        self.base_quat = torch.zeros(
+            (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
+        )
         self.obs_buf = torch.zeros(
             (self.num_envs, self.num_obs), device=gs.device, dtype=gs.tc_float
         )
@@ -263,16 +269,20 @@ class Zx120Env:
         )
 
         # reset base
-        self.robot.set_pos(self.base_init_pos, zero_velocity=False, envs_idx=envs_idx)
+        self.base_pos[envs_idx] = self.base_init_pos
+        self.base_quat[envs_idx] = self.base_init_quat.reshape(1, -1)
+        self.robot.set_pos(
+            self.base_pos[envs_idx], zero_velocity=False, envs_idx=envs_idx
+        )
         self.robot.set_quat(
-            self.base_init_quat.reshape(1, -1), zero_velocity=False, envs_idx=envs_idx
+            self.base_quat[envs_idx], zero_velocity=False, envs_idx=envs_idx
         )
         self.robot.zero_all_dofs_velocity(envs_idx)
 
         # reset buffers
-        self.bucket_end_pos[envs_idx] = self.bucket_end.get_pos()
+        self.bucket_end_pos[envs_idx] = self.bucket_end.get_pos(envs_idx)
         self.last_bucket_end_pos[envs_idx] = self.bucket_end_pos[envs_idx]
-        self.bucket_end_quat[envs_idx] = self.bucket_end.get_quat()
+        self.bucket_end_quat[envs_idx] = self.bucket_end.get_quat(envs_idx)
         self.rel_pos = self.commands - self.bucket_end_pos
         self.last_rel_pos = self.commands - self.last_bucket_end_pos
         self.last_actions[envs_idx] = 0.0
