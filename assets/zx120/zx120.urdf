@@ -75,7 +75,7 @@
     </collision>
     <inertial>
       <origin rpy="0 0 0" xyz="-0.155869 0 0.358402"/>
-      <mass value="10"/>
+      <mass value="1"/>
       <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
     </inertial>
   </link>
@@ -263,4 +263,242 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
+  
+  <joint name="left_middle_wheel_joint" type="continuous">
+    <origin rpy="-1.5707963267948966 0 0" xyz="-0.155869 1 0.35"/>
+    <parent link="base_link"/>
+    <child link="left_middle_wheel_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="left_middle_wheel_trans" type="SimpleTransmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <actuator name="left_middle_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    <joint name="left_middle_wheel_joint">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+  </transmission>
+  <link name="left_middle_wheel_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="10"/>
+      <inertia ixx="5" ixy="0.0" ixz="0.0" iyy="5" iyz="0.0" izz="5"/>
+    </inertial>
+    <!-- <visual>
+      <geometry>
+        <cylinder radius="0.35" length="0.5" />
+      </geometry>
+    </visual> -->
+    <collision>
+      <geometry>
+        <cylinder length="0.5" radius="0.35"/>
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="left_middle_wheel_link">
+    <!--material>Gazebo/Red</material-->
+    <mu1 value="0.7"/>
+    <mu2 value="0.6"/>
+    <kp value="7.5e+5"/>
+    <kd value="0.001"/>
+  </gazebo>
+  <joint name="left_front_wheel_joint" type="continuous">
+    <origin rpy="-1.5707963267948966 0 0" xyz="1.284131 1 0.35"/>
+    <parent link="base_link"/>
+    <child link="left_front_wheel_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="left_front_wheel_trans" type="SimpleTransmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <actuator name="left_front_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    <joint name="left_front_wheel_joint">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+  </transmission>
+  <link name="left_front_wheel_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="10"/>
+      <inertia ixx="5" ixy="0.0" ixz="0.0" iyy="5" iyz="0.0" izz="5"/>
+    </inertial>
+    <!-- <visual>
+      <geometry>
+        <cylinder radius="0.35" length="0.5" />
+      </geometry>
+    </visual> -->
+    <collision>
+      <geometry>
+        <cylinder length="0.5" radius="0.35"/>
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="left_front_wheel_link">
+    <!--material>Gazebo/Red</material-->
+    <mu1 value="0.7"/>
+    <mu2 value="0.6"/>
+    <kp value="7.5e+5"/>
+    <kd value="0.001"/>
+  </gazebo>
+
+  <joint name="left_rear_wheel_joint" type="continuous">
+    <origin rpy="-1.5707963267948966 0 0" xyz="-1.595869 1 0.35"/>
+    <parent link="base_link"/>
+    <child link="left_rear_wheel_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="left_rear_wheel_trans" type="SimpleTransmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <actuator name="left_rear_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    <joint name="left_rear_wheel_joint">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+  </transmission>
+  <link name="left_rear_wheel_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="10"/>
+      <inertia ixx="5" ixy="0.0" ixz="0.0" iyy="5" iyz="0.0" izz="5"/>
+    </inertial>
+    <!-- <visual>
+      <geometry>
+        <cylinder radius="0.35" length="0.5" />
+      </geometry>
+    </visual> -->
+    <collision>
+      <geometry>
+        <cylinder length="0.5" radius="0.35"/>
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="left_rear_wheel_link">
+    <!--material>Gazebo/Red</material-->
+    <mu1 value="0.7"/>
+    <mu2 value="0.6"/>
+    <kp value="7.5e+5"/>
+    <kd value="0.001"/>
+  </gazebo>
+  <joint name="right_middle_wheel_joint" type="continuous">
+    <origin rpy="-1.5707963267948966 0 0" xyz="-0.155869 -1 0.35"/>
+    <parent link="base_link"/>
+    <child link="right_middle_wheel_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="right_middle_wheel_trans" type="SimpleTransmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <actuator name="right_middle_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    <joint name="right_middle_wheel_joint">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+  </transmission>
+  <link name="right_middle_wheel_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="10"/>
+      <inertia ixx="5" ixy="0.0" ixz="0.0" iyy="5" iyz="0.0" izz="5"/>
+    </inertial>
+    <!-- <visual>
+      <geometry>
+        <cylinder radius="0.35" length="0.5" />
+      </geometry>
+    </visual> -->
+    <collision>
+      <geometry>
+        <cylinder length="0.5" radius="0.35"/>
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="right_middle_wheel_link">
+    <!--material>Gazebo/Red</material-->
+    <mu1 value="0.7"/>
+    <mu2 value="0.6"/>
+    <kp value="7.5e+5"/>
+    <kd value="0.001"/>
+  </gazebo>
+  <joint name="right_front_wheel_joint" type="continuous">
+    <origin rpy="-1.5707963267948966 0 0" xyz="1.284131 -1 0.35"/>
+    <parent link="base_link"/>
+    <child link="right_front_wheel_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="right_front_wheel_trans" type="SimpleTransmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <actuator name="right_front_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    <joint name="right_front_wheel_joint">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+  </transmission>
+  <link name="right_front_wheel_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="10"/>
+      <inertia ixx="5" ixy="0.0" ixz="0.0" iyy="5" iyz="0.0" izz="5"/>
+    </inertial>
+    <!-- <visual>
+      <geometry>
+        <cylinder radius="0.35" length="0.5" />
+      </geometry>
+    </visual> -->
+    <collision>
+      <geometry>
+        <cylinder length="0.5" radius="0.35"/>
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="right_front_wheel_link">
+    <!--material>Gazebo/Red</material-->
+    <mu1 value="0.7"/>
+    <mu2 value="0.6"/>
+    <kp value="7.5e+5"/>
+    <kd value="0.001"/>
+  </gazebo>
+
+  <joint name="right_rear_wheel_joint" type="continuous">
+    <origin rpy="-1.5707963267948966 0 0" xyz="-1.595869 -1 0.35"/>
+    <parent link="base_link"/>
+    <child link="right_rear_wheel_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <transmission name="right_rear_wheel_trans" type="SimpleTransmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <actuator name="right_rear_wheel_motor">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    <joint name="right_rear_wheel_joint">
+      <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+    </joint>
+  </transmission>
+  <link name="right_rear_wheel_link">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="10"/>
+      <inertia ixx="5" ixy="0.0" ixz="0.0" iyy="5" iyz="0.0" izz="5"/>
+    </inertial>
+    <!-- <visual>
+      <geometry>
+        <cylinder radius="0.35" length="0.5" />
+      </geometry>
+    </visual> -->
+    <collision>
+      <geometry>
+        <cylinder length="0.5" radius="0.35"/>
+      </geometry>
+    </collision>
+  </link>
+  <gazebo reference="right_rear_wheel_link">
+    <!--material>Gazebo/Red</material-->
+    <mu1 value="0.7"/>
+    <mu2 value="0.6"/>
+    <kp value="7.5e+5"/>
+    <kd value="0.001"/>
+  </gazebo>
+
 </robot>

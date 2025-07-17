@@ -22,7 +22,12 @@ excavator = scene.add_entity(
 scene.build()
 
 jnt_names = [
-    # "root_joint",
+    "left_front_wheel_joint",
+    "left_middle_wheel_joint",
+    "left_rear_wheel_joint",
+    "right_front_wheel_joint",
+    "right_middle_wheel_joint",
+    "right_rear_wheel_joint",
     "swing_joint",
     "boom_joint",
     "arm_joint",
@@ -35,49 +40,55 @@ dofs_idx = list(
     )
 )
 print(dofs_idx)
-# set force range for safety
-excavator.set_dofs_force_range(
-    lower=np.array([-100, -100, -100, -100, -100]),
-    upper=np.array([100, 100, 100, 100, 100]),
-    dofs_idx_local=dofs_idx,
-)
 
 for i in range(3000):
     if i == 0:
-        excavator.control_dofs_position(np.array([0, 0, 0, 0, 0]), dofs_idx)
+        excavator.control_dofs_velocity(
+            np.array([10.0, 10.0, 10.0, 10.0, 10.0, 10.0]),
+            dofs_idx[:6],
+        )
+        excavator.control_dofs_position(np.array([0, 0, 0, 0, 0]), dofs_idx[6:])
     elif i == 250:
-        excavator.control_dofs_position(np.array([np.pi / 2, 0, 0, 0, 0]), dofs_idx)
+        excavator.control_dofs_position(np.array([np.pi / 2, 0, 0, 0, 0]), dofs_idx[6:])
     elif i == 500:
-        excavator.control_dofs_position(np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx)
+        excavator.control_dofs_position(
+            np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx[6:]
+        )
     elif i == 750:
         excavator.control_dofs_position(
-            np.array([np.pi * 3 / 2, -1.22, 0, 0, 0]), dofs_idx
+            np.array([np.pi * 3 / 2, -1.22, 0, 0, 0]), dofs_idx[6:]
         )
     elif i == 1000:
         excavator.control_dofs_position(
-            np.array([np.pi * 3 / 2, 0.76, 0, 0, 0]), dofs_idx
+            np.array([np.pi * 3 / 2, 0.76, 0, 0, 0]), dofs_idx[6:]
         )
     elif i == 1250:
-        excavator.control_dofs_position(np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx)
+        excavator.control_dofs_position(
+            np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx[6:]
+        )
     elif i == 1500:
         excavator.control_dofs_position(
-            np.array([np.pi * 3 / 2, 0, 0.5, 0, 0]), dofs_idx
+            np.array([np.pi * 3 / 2, 0, 0.5, 0, 0]), dofs_idx[6:]
         )
     elif i == 1750:
         excavator.control_dofs_position(
-            np.array([np.pi * 3 / 2, 0, 2.6, 0, 0]), dofs_idx
+            np.array([np.pi * 3 / 2, 0, 2.6, 0, 0]), dofs_idx[6:]
         )
     elif i == 2000:
-        excavator.control_dofs_position(np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx)
+        excavator.control_dofs_position(
+            np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx[6:]
+        )
     elif i == 2250:
         excavator.control_dofs_position(
-            np.array([np.pi * 3 / 2, 0, 0, -0.53, 0]), dofs_idx
+            np.array([np.pi * 3 / 2, 0, 0, -0.53, 0]), dofs_idx[6:]
         )
     elif i == 2500:
         excavator.control_dofs_position(
-            np.array([np.pi * 3 / 2, 0, 0, 2.49, 0]), dofs_idx
+            np.array([np.pi * 3 / 2, 0, 0, 2.49, 0]), dofs_idx[6:]
         )
     elif i == 2750:
-        excavator.control_dofs_position(np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx)
+        excavator.control_dofs_position(
+            np.array([np.pi * 3 / 2, 0, 0, 0, 0]), dofs_idx[6:]
+        )
 
     scene.step()
