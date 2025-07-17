@@ -19,7 +19,7 @@ from rsl_rl.runners import OnPolicyRunner
 from math import pi
 import genesis as gs
 
-from zx120_env import Zx120Env
+from bucket_touch_env import BucketTouchEnv
 
 
 def get_train_cfg(exp_name, max_iterations):
@@ -124,7 +124,7 @@ def get_cfgs():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="zx120-touch")
+    parser.add_argument("-e", "--exp_name", type=str, default="bucket-touch")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
     parser.add_argument("--max_iterations", type=int, default=1001)
     args = parser.parse_args()
@@ -144,7 +144,7 @@ def main():
         open(f"{log_dir}/cfgs.pkl", "wb"),
     )
 
-    env = Zx120Env(
+    env = BucketTouchEnv(
         num_envs=args.num_envs,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,

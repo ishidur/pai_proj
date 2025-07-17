@@ -15,7 +15,7 @@ def gs_rand_float(lower: float, upper: float, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class Zx120Env:
+class BucketTouchEnv:
     def __init__(
         self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False
     ):

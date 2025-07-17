@@ -20,12 +20,12 @@ from rsl_rl.runners import OnPolicyRunner
 
 import genesis as gs
 
-from zx120_env import Zx120Env
+from bucket_touch_env import BucketTouchEnv
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="zx120-touch")
+    parser.add_argument("-e", "--exp_name", type=str, default="bucket-touch")
     parser.add_argument("--ckpt", type=int, default=1000)
     parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()
@@ -42,7 +42,7 @@ def main():
     if args.record:
         env_cfg["visualize_camera"] = True
 
-    env = Zx120Env(
+    env = BucketTouchEnv(
         num_envs=1,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,
