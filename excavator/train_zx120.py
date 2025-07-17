@@ -90,9 +90,11 @@ def get_cfgs():
         "episode_length_s": 20.0,
         "at_target_threshold": 0.1,
         "action_scale": 1.0,
-        "simulate_action_latency": True,
-        "clip_actions": 3.14,
+        "simulate_action_latency": False,
+        "clip_actions": 1.0,
         "visualize_target": False,
+        "visualize_camera": False,
+        "max_visualize_FPS": 60,
     }
     obs_cfg = {
         "num_obs": 18,
@@ -104,15 +106,16 @@ def get_cfgs():
     }
     reward_cfg = {
         "reward_scales": {
-            "target": 1.0,
-            "smooth": -1e-4,
+            "target": 10.0,
+            "target_arrival": 1000.0,
+            "smooth": -0.1,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "r_range": [3.0, 7.0],
+        "r_range": [3.0, 6.0],
         "azimuth_range": [-pi, pi],
-        "altitude_range": [0, pi * 2 / 5],
+        "altitude_range": [0, pi / 4],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -122,7 +125,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="zx120-touch")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=101)
+    parser.add_argument("--max_iterations", type=int, default=501)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")

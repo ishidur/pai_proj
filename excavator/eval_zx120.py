@@ -26,7 +26,8 @@ from zx120_env import Zx120Env
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="zx120-touch")
-    parser.add_argument("--ckpt", type=int, default=100)
+    parser.add_argument("--ckpt", type=int, default=500)
+    parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()
 
     gs.init()
@@ -38,6 +39,8 @@ def main():
     reward_cfg["reward_scales"] = {}
     # visualize the target
     env_cfg["visualize_target"] = True
+    if args.record:
+        env_cfg["visualize_camera"] = True
 
     env = Zx120Env(
         num_envs=1,
@@ -45,7 +48,7 @@ def main():
         obs_cfg=obs_cfg,
         reward_cfg=reward_cfg,
         command_cfg=command_cfg,
-        show_viewer=True,
+        show_viewer=False,
     )
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
@@ -54,13 +57,22 @@ def main():
     policy = runner.get_inference_policy(device=gs.device)
 
     obs, _ = env.reset()
-    # env.cam.start_recording()
+    max_sim_step = int(env_cfg["episode_length_s"] * env_cfg["max_visualize_FPS"])
     with torch.no_grad():
-        for i in range(300):
-            actions = policy(obs)
-            obs, rews, dones, infos = env.step(actions)
-            # env.cam.render()
-    # env.cam.stop_recording(save_to_filename="go2_walking.mp4", fps=60)
+        if args.record:
+            env.cam.start_recording()
+            for _ in range(max_sim_step):
+                actions = policy(obs)
+                obs, rews, dones, infos = env.step(actions)
+                env.cam.render()
+            env.cam.stop_recording(
+                save_to_filename=f"{args.exp_name}.mp4",
+                fps=env_cfg["max_visualize_FPS"],
+            )
+        else:
+            for _ in range(max_sim_step):
+                actions = policy(obs)
+                obs, rews, dones, infos = env.step(actions)
 
 
 if __name__ == "__main__":

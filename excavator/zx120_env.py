@@ -27,7 +27,7 @@ class Zx120Env:
         self.device = gs.device
 
         self.simulate_action_latency = env_cfg["simulate_action_latency"]
-        self.dt = 0.02  # control frequency on real robot is 50hz
+        self.dt = 0.01  # control frequency on real robot is 100hz
         self.max_episode_length = math.ceil(env_cfg["episode_length_s"] / self.dt)
 
         self.env_cfg = env_cfg
@@ -42,7 +42,7 @@ class Zx120Env:
         self.scene = gs.Scene(
             sim_options=gs.options.SimOptions(dt=self.dt, substeps=2),
             viewer_options=gs.options.ViewerOptions(
-                max_FPS=int(0.5 / self.dt),
+                max_FPS=env_cfg["max_visualize_FPS"],
                 camera_pos=(10.0, 10.0, 10.0),
                 camera_lookat=(0.0, 0.0, 1.0),
                 camera_fov=40,
@@ -76,6 +76,16 @@ class Zx120Env:
             )
         else:
             self.target = None
+
+        # add camera
+        if self.env_cfg["visualize_camera"]:
+            self.cam = self.scene.add_camera(
+                res=(640, 480),
+                pos=(10.0, 10.0, 10.0),
+                lookat=(0.0, 0.0, 1.0),
+                fov=40,
+                GUI=False,
+            )
 
         # add robot
         self.base_init_pos = torch.tensor(
@@ -169,12 +179,12 @@ class Zx120Env:
         self.commands[envs_idx, 2] = r * torch.sin(alt)
 
     def _at_target(self):
-        at_target = (
+        self.at_target = (
             (torch.norm(self.rel_pos, dim=1) < self.env_cfg["at_target_threshold"])
             .nonzero(as_tuple=False)
             .flatten()
         )
-        return at_target
+        return self.at_target
 
     def step(self, actions):
         self.actions = torch.clip(
@@ -183,10 +193,8 @@ class Zx120Env:
         exec_actions = (
             self.last_actions if self.simulate_action_latency else self.actions
         )
-        target_dof_pos = (
-            exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
-        )
-        self.robot.control_dofs_position(target_dof_pos, self.motors_dof_idx)
+        target_dof_vel = exec_actions * self.env_cfg["action_scale"]
+        self.robot.control_dofs_velocity(target_dof_vel, self.motors_dof_idx)
         # update target pos
         if self.target is not None:
             self.target.set_pos(self.commands, zero_velocity=True)
@@ -313,5 +321,12 @@ class Zx120Env:
         return target_rew
 
     def _reward_smooth(self):
-        smooth_rew = torch.sum(torch.square(self.actions - self.last_actions), dim=1)
+        smooth_rew = torch.sum(
+            torch.abs(torch.sign(self.actions) - torch.sign(self.last_actions)), dim=1
+        )  # signs of the velocity input consistency
         return smooth_rew
+
+    def _reward_target_arrival(self):
+        arrival_rew = torch.zeros((self.num_envs,), device=gs.device, dtype=gs.tc_float)
+        arrival_rew[self.at_target] = 1
+        return arrival_rew
