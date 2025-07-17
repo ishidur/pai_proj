@@ -58,6 +58,7 @@
   <!-- Base Link -->
   <link name="base_link"/>
   <joint name="base_joint" type="fixed">
+      <origin rpy="0 0 0" xyz="0 0 0.01"/>
     <parent link="base_link"/>
     <child link="track_link"/>
   </joint>
