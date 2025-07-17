@@ -74,7 +74,7 @@ def get_cfgs():
         # joint/link names
         "default_joint_angles": {  # [rad]
             "swing_joint": 0.0,
-            "boom_joint": -0.22,
+            "boom_joint": -0.5,
             "arm_joint": 1.6,
             "bucket_joint": 0.96,
         },
@@ -88,7 +88,7 @@ def get_cfgs():
         "base_init_pos": [0.0, 0.0, 0.0],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
-        "at_target_threshold": 0.1,
+        "at_target_threshold": 0.5,
         "action_scale": 1.0,
         "simulate_action_latency": False,
         "clip_actions": 1.0,
@@ -109,6 +109,7 @@ def get_cfgs():
             "target": 10.0,
             "target_arrival": 1000.0,
             "smooth": -0.1,
+            "angular": -1,
         },
     }
     command_cfg = {
@@ -125,7 +126,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="zx120-touch")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=501)
+    parser.add_argument("--max_iterations", type=int, default=1001)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")

@@ -129,6 +129,9 @@ class Zx120Env:
         self.base_quat = torch.zeros(
             (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
         )
+        self.base_ang_vel = torch.zeros(
+            (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
+        )
         self.obs_buf = torch.zeros(
             (self.num_envs, self.num_obs), device=gs.device, dtype=gs.tc_float
         )
@@ -202,6 +205,10 @@ class Zx120Env:
 
         # update buffers
         self.episode_length_buf += 1
+        self.base_pos[:] = self.robot.get_pos()
+        self.base_quat[:] = self.robot.get_quat()
+        inv_base_quat = inv_quat(self.base_quat)
+        self.base_ang_vel[:] = transform_by_quat(self.robot.get_ang(), inv_base_quat)
         self.last_bucket_end_pos[:] = self.bucket_end_pos[:]
         self.bucket_end_pos[:] = self.bucket_end.get_pos()
         self.rel_pos = self.commands - self.bucket_end_pos
@@ -285,6 +292,7 @@ class Zx120Env:
         self.robot.set_quat(
             self.base_quat[envs_idx], zero_velocity=False, envs_idx=envs_idx
         )
+        self.base_ang_vel[envs_idx] = 0
         self.robot.zero_all_dofs_velocity(envs_idx)
 
         # reset buffers
@@ -330,3 +338,7 @@ class Zx120Env:
         arrival_rew = torch.zeros((self.num_envs,), device=gs.device, dtype=gs.tc_float)
         arrival_rew[self.at_target] = 1
         return arrival_rew
+
+    def _reward_angular(self):
+        angular_rew = torch.norm(self.base_ang_vel, dim=1)
+        return angular_rew

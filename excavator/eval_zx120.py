@@ -26,7 +26,7 @@ from zx120_env import Zx120Env
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="zx120-touch")
-    parser.add_argument("--ckpt", type=int, default=500)
+    parser.add_argument("--ckpt", type=int, default=1000)
     parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -48,7 +48,7 @@ def main():
         obs_cfg=obs_cfg,
         reward_cfg=reward_cfg,
         command_cfg=command_cfg,
-        show_viewer=False,
+        show_viewer=not args.record,
     )
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
