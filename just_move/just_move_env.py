@@ -12,7 +12,7 @@ def gs_rand_float(lower: float, upper: float, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class BucketTouchMoveEnv:
+class JustMoveEnv:
     def __init__(
         self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False
     ):
@@ -166,7 +166,7 @@ class BucketTouchMoveEnv:
         self.bucket_end_quat = torch.zeros(
             (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
         )
-        self.last_bucket_end_pos = torch.zeros_like(self.bucket_end_pos)
+        self.last_base_pos = torch.zeros_like(self.base_pos)
         self.default_dof_pos = torch.tensor(
             [
                 self.env_cfg["default_joint_angles"][name]
@@ -185,9 +185,7 @@ class BucketTouchMoveEnv:
         self.commands[envs_idx, 1] = gs_rand_float(
             *self.command_cfg["y_range"], (len(envs_idx),), gs.device
         )
-        self.commands[envs_idx, 2] = gs_rand_float(
-            *self.command_cfg["z_range"], (len(envs_idx),), gs.device
-        )
+        self.commands[envs_idx, 2] = 0.0
 
     def _at_target(self):
         self.at_target = (
@@ -217,14 +215,14 @@ class BucketTouchMoveEnv:
 
         # update buffers
         self.episode_length_buf += 1
+        self.last_base_pos[:] = self.base_pos[:]
         self.base_pos[:] = self.robot.get_pos()  # global position
         self.base_quat[:] = self.robot.get_quat()
         inv_base_quat = inv_quat(self.base_quat)
         self.base_ang_vel[:] = transform_by_quat(self.robot.get_ang(), inv_base_quat)
-        self.last_bucket_end_pos[:] = self.bucket_end_pos[:]
         self.bucket_end_pos[:] = self.bucket_end.get_pos()  # global position
-        self.rel_pos = self.commands - self.bucket_end_pos
-        self.last_rel_pos = self.commands - self.last_bucket_end_pos
+        self.rel_pos = self.commands - self.base_pos
+        self.last_rel_pos = self.commands - self.last_base_pos
         self.bucket_end_quat[:] = self.bucket_end.get_quat()
 
         self.dof_pos[:] = self.robot.get_dofs_position(self.motors_dof_idx)
@@ -311,10 +309,10 @@ class BucketTouchMoveEnv:
 
         # reset buffers
         self.bucket_end_pos[envs_idx] = self.bucket_end.get_pos(envs_idx)
-        self.last_bucket_end_pos[envs_idx] = self.bucket_end_pos[envs_idx]
+        self.last_base_pos[envs_idx] = self.base_pos[envs_idx]
         self.bucket_end_quat[envs_idx] = self.bucket_end.get_quat(envs_idx)
-        self.rel_pos = self.commands - self.bucket_end_pos
-        self.last_rel_pos = self.commands - self.last_bucket_end_pos
+        self.rel_pos = self.commands - self.base_pos
+        self.last_rel_pos = self.commands - self.last_base_pos
         self.last_actions[envs_idx] = 0.0
         self.episode_length_buf[envs_idx] = 0
         self.reset_buf[envs_idx] = True
@@ -360,3 +358,11 @@ class BucketTouchMoveEnv:
     def _reward_base_velocity(self):
         base_vel_rew = torch.norm(self.robot.get_vel(), dim=1)
         return base_vel_rew
+
+    def _reward_body_action(self):
+        body_action_rew = torch.norm(self.actions[:, 2:], dim=1)
+        return body_action_rew
+
+    def _reward_bucket_height(self):
+        bucket_height = torch.square(self.bucket_end_pos[:, 2] - 1.0)
+        return bucket_height

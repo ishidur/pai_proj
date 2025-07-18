@@ -18,7 +18,7 @@ except (metadata.PackageNotFoundError, ImportError) as e:
 from rsl_rl.runners import OnPolicyRunner
 import genesis as gs
 
-from bucket_touch_move_env import BucketTouchMoveEnv
+from just_move_env import JustMoveEnv
 
 
 def get_train_cfg(exp_name, max_iterations):
@@ -94,7 +94,7 @@ def get_cfgs():
         # base pose
         "base_init_pos": [0.0, 0.0, 0.0],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
-        "episode_length_s": 50.0,
+        "episode_length_s": 30.0,
         "at_target_threshold": 0.5,
         "action_scale": 1.0,
         "crawler_action_scale": 10.0,
@@ -118,15 +118,14 @@ def get_cfgs():
             "target": 10.0,
             "target_arrival": 1000.0,
             "smooth": -0.1,
-            "angular": -1,
-            "base_velocity": -1,
+            "body_action": -0.1,
+            "bucket_height": -1.0,
         },
     }
     command_cfg = {
         "num_commands": 3,
         "x_range": [-10.0, 10.0],
         "y_range": [-10.0, 10.0],
-        "z_range": [0, 6.0],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -134,9 +133,9 @@ def get_cfgs():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="move-touch")
+    parser.add_argument("-e", "--exp_name", type=str, default="just-move")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=1001)
+    parser.add_argument("--max_iterations", type=int, default=501)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")
@@ -154,7 +153,7 @@ def main():
         open(f"{log_dir}/cfgs.pkl", "wb"),
     )
 
-    env = BucketTouchMoveEnv(
+    env = JustMoveEnv(
         num_envs=args.num_envs,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,
