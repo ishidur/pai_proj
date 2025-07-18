@@ -25,7 +25,7 @@ from bucket_touch_move_env import BucketTouchMoveEnv
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="bucket-touch")
+    parser.add_argument("-e", "--exp_name", type=str, default="move-touch")
     parser.add_argument("--ckpt", type=int, default=1000)
     parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()

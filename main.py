@@ -41,10 +41,12 @@ dofs_idx = list(
 )
 print(dofs_idx)
 bucket_end = excavator.get_link("bucket_end_link")
+r_vel = 10.0
+l_vel = 0.0
 for i in range(3000):
     if i == 0:
         excavator.control_dofs_velocity(
-            np.array([3.0, 3.0, 3.0, 3.0, 3.0, 3.0]),
+            np.array([l_vel, l_vel, l_vel, r_vel, r_vel, r_vel]),
             dofs_idx[:6],
         )
         excavator.control_dofs_position(np.array([0, 0, 0, 0, 0]), dofs_idx[6:])

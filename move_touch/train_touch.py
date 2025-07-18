@@ -85,10 +85,10 @@ def get_cfgs():
         ],
         "crawler_joints": [
             "left_front_wheel_joint",
-            "left_middle_wheel_joint",
-            "left_rear_wheel_joint",
             "right_front_wheel_joint",
+            "left_middle_wheel_joint",
             "right_middle_wheel_joint",
+            "left_rear_wheel_joint",
             "right_rear_wheel_joint",
         ],
         # base pose
@@ -97,7 +97,7 @@ def get_cfgs():
         "episode_length_s": 30.0,
         "at_target_threshold": 0.5,
         "action_scale": 1.0,
-        "crawler_action_scale": 3.0,
+        "crawler_action_scale": 10.0,
         "simulate_action_latency": False,
         "clip_actions": 1.0,
         "visualize_target": False,
@@ -105,7 +105,7 @@ def get_cfgs():
         "max_visualize_FPS": 60,
     }
     obs_cfg = {
-        "num_obs": 25,
+        "num_obs": 27,
         "obs_scales": {
             "base_pos": 0.1,
             "rel_pos": 0.1,

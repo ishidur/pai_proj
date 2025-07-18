@@ -154,8 +154,10 @@ class BucketTouchMoveEnv:
             (self.num_envs, self.num_actions), device=gs.device, dtype=gs.tc_float
         )
         self.last_actions = torch.zeros_like(self.actions)
-        self.dof_pos = torch.zeros_like(self.actions)
-        self.dof_vel = torch.zeros_like(self.actions)
+        self.dof_pos = torch.zeros(
+            (self.num_envs, len(self.motors_dof_idx)), device=gs.device, dtype=gs.tc_float
+        )
+        self.dof_vel = torch.zeros_like(self.dof_pos)
         self.bucket_end_pos = torch.zeros(
             (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
         )
@@ -200,7 +202,9 @@ class BucketTouchMoveEnv:
         exec_actions = (
             self.last_actions if self.simulate_action_latency else self.actions
         )
-        target_crawler_vel = exec_actions[:, :2] * self.env_cfg["crawler_action_scale"]
+        target_crawler_vel = (
+            exec_actions[:, :2].repeat(1, 3) * self.env_cfg["crawler_action_scale"]
+        )
         self.robot.control_dofs_velocity(target_crawler_vel, self.crawlers_dof_idx)
         target_dof_vel = exec_actions[:, 2:] * self.env_cfg["action_scale"]
         self.robot.control_dofs_velocity(target_dof_vel, self.motors_dof_idx)
@@ -259,7 +263,7 @@ class BucketTouchMoveEnv:
                 self.commands,  # 3
                 self.dof_pos * self.obs_scales["dof_pos"],  # 4
                 self.dof_vel * self.obs_scales["dof_vel"],  # 4
-                self.actions,  # 4
+                self.actions,  # 6
             ],
             axis=-1,
         )
