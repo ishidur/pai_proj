@@ -99,7 +99,7 @@ def get_cfgs():
     obs_cfg = {
         "num_obs": 18,
         "obs_scales": {
-            "rel_pos": 0.1,
+            "rel_pos": 1.0,
             "dof_pos": 1.0,
             "dof_vel": 1.0,
         },

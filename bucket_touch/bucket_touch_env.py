@@ -12,6 +12,61 @@ def gs_rand_float(lower: float, upper: float, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
+def cartesian_to_spherical(cartesian_coords: torch.Tensor) -> torch.Tensor:
+    """
+    3次元直交座標系 (x, y, z) から極座標（球座標系） (r, theta, phi) に変換します。
+
+    Args:
+        cartesian_coords (torch.Tensor): (n, 3) の形状を持つTensor。各行が (x, y, z) 座標を表します。
+
+    Returns:
+        torch.Tensor: (n, 3) の形状を持つTensor。各行が (r, theta, phi) 座標を表します。
+                      - r: 原点からの距離（半径）
+                      - theta: z軸正方向からの角度（極角）。範囲は [0, pi] です。
+                      - phi: xy平面上でのx軸正方向からの角度（方位角）。範囲は [-pi, pi] です。
+    """
+    x = cartesian_coords[:, 0]
+    y = cartesian_coords[:, 1]
+    z = cartesian_coords[:, 2]
+
+    # ゼロ除算を避けるための微小な値
+    eps = 1e-8
+
+    # 半径 r の計算
+    r = torch.norm(cartesian_coords, p=2, dim=1)
+
+    # 極角 theta の計算
+    # 浮動小数点精度の問題で acos の引数が [-1, 1] の範囲外になるのを防ぐために clamp を使用
+    theta = torch.acos(torch.clamp(z / (r + eps), -1.0, 1.0))
+
+    # 方位角 phi の計算
+    phi = torch.atan2(y, x)
+
+    # 結果を (r, theta, phi) の順でスタックして返す
+    spherical_coords = torch.stack((r, theta, phi), dim=1)
+
+    return spherical_coords
+
+
+def spherical_diff(p1: torch.Tensor, p2: torch.Tensor):
+    """
+    p1, p2: [n, 3] tensor 各行が (r, theta, phi)
+    returns: (r, theta, phi) tensors of shape [n]
+    """
+
+    # 半径差（符号付き）
+    delta_r = p2[:, 0] - p1[:, 0]
+
+    # 角度差（正規化して -π〜π に収める）
+    raw_theta_diff = p2[:, 1] - p1[:, 1]
+    raw_phi_diff = p2[:, 2] - p1[:, 2]
+    delta_theta = torch.remainder(raw_theta_diff + math.pi, 2 * math.pi) - math.pi
+    delta_phi = torch.remainder(raw_phi_diff + math.pi, 2 * math.pi) - math.pi
+    normalized_diff = torch.stack((delta_r, delta_theta, delta_phi), dim=1)
+
+    return normalized_diff
+
+
 class BucketTouchEnv:
     def __init__(
         self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False
@@ -142,6 +197,7 @@ class BucketTouchEnv:
         self.commands = torch.zeros(
             (self.num_envs, self.num_commands), device=gs.device, dtype=gs.tc_float
         )
+        self.commands_cart = torch.zeros_like(self.commands)
         self.actions = torch.zeros(
             (self.num_envs, self.num_actions), device=gs.device, dtype=gs.tc_float
         )
@@ -174,13 +230,16 @@ class BucketTouchEnv:
         alt = gs_rand_float(
             *self.command_cfg["altitude_range"], (len(envs_idx),), gs.device
         )
-        self.commands[envs_idx, 0] = r * torch.cos(alt) * torch.cos(az)
-        self.commands[envs_idx, 1] = r * torch.cos(alt) * torch.sin(az)
-        self.commands[envs_idx, 2] = r * torch.sin(alt)
+        self.commands[envs_idx, 0] = r
+        self.commands[envs_idx, 1] = alt
+        self.commands[envs_idx, 2] = az
+        self.commands_cart[envs_idx, 0] = r * torch.cos(alt) * torch.cos(az)
+        self.commands_cart[envs_idx, 1] = r * torch.cos(alt) * torch.sin(az)
+        self.commands_cart[envs_idx, 2] = r * torch.sin(alt)
 
     def _at_target(self):
         self.at_target = (
-            (torch.norm(self.rel_pos, dim=1) < self.env_cfg["at_target_threshold"])
+            (torch.norm(self.rel_pos_cart, dim=1) < self.env_cfg["at_target_threshold"])
             .nonzero(as_tuple=False)
             .flatten()
         )
@@ -197,7 +256,7 @@ class BucketTouchEnv:
         self.robot.control_dofs_velocity(target_dof_vel, self.motors_dof_idx)
         # update target pos
         if self.target is not None:
-            self.target.set_pos(self.commands, zero_velocity=True)
+            self.target.set_pos(self.commands_cart, zero_velocity=True)
         self.scene.step()
 
         # update buffers
@@ -207,9 +266,12 @@ class BucketTouchEnv:
         inv_base_quat = inv_quat(self.base_quat)
         self.base_ang_vel[:] = transform_by_quat(self.robot.get_ang(), inv_base_quat)
         self.last_bucket_end_pos[:] = self.bucket_end_pos[:]
-        self.bucket_end_pos[:] = self.bucket_end.get_pos()
-        self.rel_pos = self.commands - self.bucket_end_pos
-        self.last_rel_pos = self.commands - self.last_bucket_end_pos
+        bckt_end_pos = self.bucket_end.get_pos()
+        self.rel_pos_cart = self.commands_cart - bckt_end_pos
+        self.bucket_end_pos[:] = cartesian_to_spherical(bckt_end_pos)
+
+        self.rel_pos = spherical_diff(self.commands, self.bucket_end_pos)
+        self.last_rel_pos = spherical_diff(self.commands, self.last_bucket_end_pos)
         self.bucket_end_quat[:] = self.bucket_end.get_quat()
 
         self.dof_pos[:] = self.robot.get_dofs_position(self.motors_dof_idx)
@@ -244,7 +306,7 @@ class BucketTouchEnv:
         # compute observations
         self.obs_buf = torch.cat(
             [
-                torch.clip(self.rel_pos * self.obs_scales["rel_pos"], -1, 1),  # 3
+                self.rel_pos * self.obs_scales["rel_pos"],  # 3
                 self.commands,  # 3
                 self.dof_pos * self.obs_scales["dof_pos"],  # 4
                 self.dof_vel * self.obs_scales["dof_vel"],  # 4
@@ -293,11 +355,14 @@ class BucketTouchEnv:
         self.robot.zero_all_dofs_velocity(envs_idx)
 
         # reset buffers
-        self.bucket_end_pos[envs_idx] = self.bucket_end.get_pos(envs_idx)
+        self.bucket_end_pos[envs_idx] = cartesian_to_spherical(
+            self.bucket_end.get_pos(envs_idx)
+        )
         self.last_bucket_end_pos[envs_idx] = self.bucket_end_pos[envs_idx]
         self.bucket_end_quat[envs_idx] = self.bucket_end.get_quat(envs_idx)
-        self.rel_pos = self.commands - self.bucket_end_pos
-        self.last_rel_pos = self.commands - self.last_bucket_end_pos
+
+        self.rel_pos = spherical_diff(self.commands, self.bucket_end_pos)
+        self.last_rel_pos = spherical_diff(self.commands, self.last_bucket_end_pos)
         self.last_actions[envs_idx] = 0.0
         self.episode_length_buf[envs_idx] = 0
         self.reset_buf[envs_idx] = True
@@ -320,8 +385,10 @@ class BucketTouchEnv:
 
     # ------------ reward functions----------------
     def _reward_target(self):
-        target_rew = torch.sum(torch.square(self.last_rel_pos), dim=1) - torch.sum(
-            torch.square(self.rel_pos), dim=1
+        last_sq = torch.square(self.last_rel_pos)
+        now_sq = torch.square(self.rel_pos)
+        target_rew = (last_sq[:, 0] - now_sq[:, 0]) + 10.0 * (
+            torch.sum(last_sq[:, 1:], dim=1) - torch.sum(now_sq[:, 1:], dim=1)
         )
         return target_rew
 
