@@ -1,11 +1,12 @@
-import torch
 import math
-import genesis as gs
-from genesis.utils.geom import (
-    transform_by_quat,
-    inv_quat,
-)
 from itertools import chain
+
+import genesis as gs
+import torch
+from genesis.utils.geom import (
+    inv_quat,
+    transform_by_quat,
+)
 
 
 def gs_rand_float(lower: float, upper: float, shape, device):

@@ -15,11 +15,11 @@ except (metadata.PackageNotFoundError, ImportError) as e:
     raise ImportError(
         "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
     ) from e
-from rsl_rl.runners import OnPolicyRunner
 from math import pi
-import genesis as gs
 
+import genesis as gs
 from bucket_touch_env import BucketTouchEnv
+from rsl_rl.runners import OnPolicyRunner
 
 
 def get_train_cfg(exp_name, max_iterations):

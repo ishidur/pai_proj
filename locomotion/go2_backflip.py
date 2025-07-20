@@ -1,9 +1,8 @@
 import argparse
 
+import genesis as gs
 import torch
 from go2_env import Go2Env
-
-import genesis as gs
 
 
 def get_cfgs():

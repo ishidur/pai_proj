@@ -15,11 +15,9 @@ except (metadata.PackageNotFoundError, ImportError) as e:
     raise ImportError(
         "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
     ) from e
-from rsl_rl.runners import OnPolicyRunner
-
 import genesis as gs
-
 from go2_env import Go2Env
+from rsl_rl.runners import OnPolicyRunner
 
 
 def get_train_cfg(exp_name, max_iterations):

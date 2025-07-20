@@ -1,6 +1,5 @@
-import numpy as np
-
 import genesis as gs
+import numpy as np
 
 ########################## 初期化 ##########################
 gs.init(backend=gs.gpu)

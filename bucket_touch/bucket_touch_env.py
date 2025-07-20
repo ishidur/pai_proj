@@ -1,11 +1,14 @@
-import torch
 import math
-import genesis as gs
-from genesis.utils.geom import (
-    transform_by_quat,
-    inv_quat,
-)
 from itertools import chain
+
+import genesis as gs
+import torch
+from genesis.utils.geom import (
+    inv_quat,
+    quat_to_xyz,
+    transform_by_quat,
+    transform_quat_by_quat,
+)
 
 
 def gs_rand_float(lower: float, upper: float, shape, device):
@@ -276,6 +279,13 @@ class BucketTouchEnv:
 
         self.dof_pos[:] = self.robot.get_dofs_position(self.motors_dof_idx)
         self.dof_vel[:] = self.robot.get_dofs_velocity(self.motors_dof_idx)
+
+        bucket_euler_relative = quat_to_xyz(
+            self.bucket_end.get_quat(),
+            rpy=True,
+            degrees=True,
+        )
+        print(bucket_euler_relative)
 
         # resample commands
         envs_idx = self._at_target()

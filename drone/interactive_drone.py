@@ -1,8 +1,9 @@
 import argparse
-import numpy as np
-import genesis as gs
-import time
 import threading
+import time
+
+import genesis as gs
+import numpy as np
 from pynput import keyboard
 
 
