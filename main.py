@@ -1,6 +1,7 @@
+from itertools import chain
+
 import genesis as gs
 import numpy as np
-from itertools import chain
 
 gs.init(backend=gs.gpu)
 

@@ -7,7 +7,6 @@ from genesis.utils.geom import (
     inv_quat,
     quat_to_xyz,
     transform_by_quat,
-    transform_quat_by_quat,
 )
 
 
@@ -395,8 +394,8 @@ class BucketTouchEnv:
 
     # ------------ reward functions----------------
     def _reward_target(self):
-        last_sq = torch.square(self.last_rel_pos)
-        now_sq = torch.square(self.rel_pos)
+        last_sq = torch.abs(self.last_rel_pos)
+        now_sq = torch.abs(self.rel_pos)
         target_rew = (last_sq[:, 0] - now_sq[:, 0]) + 10.0 * (
             torch.sum(last_sq[:, 1:], dim=1) - torch.sum(now_sq[:, 1:], dim=1)
         )
