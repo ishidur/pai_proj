@@ -6,6 +6,7 @@ import torch
 from genesis.utils.geom import (
     inv_quat,
     transform_by_quat,
+    xyz_to_quat,
 )
 
 
@@ -115,9 +116,8 @@ class BucketPoseEnv:
         # add target
         if self.env_cfg["visualize_target"]:
             self.target = self.scene.add_entity(
-                morph=gs.morphs.Mesh(
-                    file="meshes/sphere.obj",
-                    scale=0.05,
+                morph=gs.morphs.URDF(
+                    file="../assets/zx120/zx120-bucket.urdf",
                     fixed=False,
                     collision=False,
                 ),
@@ -199,7 +199,10 @@ class BucketPoseEnv:
             (self.num_envs, self.num_commands), device=gs.device, dtype=gs.tc_float
         )
         self.commands_cart = torch.zeros(
-            (self.num_envs, self.num_commands - 1), device=gs.device, dtype=gs.tc_float
+            (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
+        )
+        self.commands_quat = torch.zeros(
+            (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
         )
         self.actions = torch.zeros(
             (self.num_envs, self.num_actions), device=gs.device, dtype=gs.tc_float
@@ -243,6 +246,17 @@ class BucketPoseEnv:
         self.commands_cart[envs_idx, 0] = r * torch.cos(alt) * torch.cos(az)
         self.commands_cart[envs_idx, 1] = r * torch.cos(alt) * torch.sin(az)
         self.commands_cart[envs_idx, 2] = r * torch.sin(alt)
+        self.commands_quat[envs_idx] = xyz_to_quat(
+            torch.stack(
+                (
+                    torch.zeros_like(bucket_pitch),
+                    bucket_pitch - math.pi * 0.5,
+                    az,
+                ),
+                dim=1,
+            ),
+            rpy=True,
+        )
 
     def _at_target(self):
         self.at_target = (
@@ -273,6 +287,7 @@ class BucketPoseEnv:
         # update target pos
         if self.target is not None:
             self.target.set_pos(self.commands_cart, zero_velocity=True)
+            self.target.set_quat(self.commands_quat, zero_velocity=True)
         self.scene.step()
 
         # update buffers
@@ -293,7 +308,7 @@ class BucketPoseEnv:
 
         self.dof_pos[:] = self.robot.get_dofs_position(self.motors_dof_idx)
         self.dof_vel[:] = self.robot.get_dofs_velocity(self.motors_dof_idx)
-        self.bucket_pose[:] = torch.sum(self.dof_pos[:, 1:], dim=1) + 1.57079632679
+        self.bucket_pose[:] = torch.sum(self.dof_pos[:, 1:], dim=1) + 2.44346095279
 
         # resample commands
         envs_idx = self._at_target()
@@ -379,7 +394,7 @@ class BucketPoseEnv:
         )
         self.last_bucket_end_pos[envs_idx] = self.bucket_end_pos[envs_idx]
         self.bucket_pose[envs_idx] = (
-            torch.sum(self.dof_pos[envs_idx, 1:], dim=1) + 1.57079632679
+            torch.sum(self.dof_pos[envs_idx, 1:], dim=1) + 2.44346095279
         )
 
         self.rel_pos = spherical_diff(self.commands[:, :3], self.bucket_end_pos)

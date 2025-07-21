@@ -119,7 +119,7 @@ def get_cfgs():
         "r_range": [3.5, 6.0],
         "azimuth_range": [-pi, pi],
         "altitude_range": [pi / 10, pi / 4],
-        "bucket_pitch_range": [pi, 1.5 * pi],
+        "bucket_pitch_range": [1.25 * pi, 1.75 * pi],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
