@@ -19,6 +19,20 @@ excavator = scene.add_entity(
     # gs.morphs.MJCF(file='xml/franka_emika_panda/panda.xml')
     gs.morphs.URDF(file="./assets/zx120/zx120.urdf", pos=[0, 0, 0]),
 )
+cube = scene.add_entity(
+    gs.morphs.Sphere(
+        radius=0.5,
+        pos=(0, 6, 1),
+    ),
+    material=gs.materials.Rigid(0.1),
+)
+scene.add_entity(
+    gs.morphs.Box(
+        size=(0.5, 0.5, 0.5),
+        pos=(0, -6.5, 1),
+    ),
+    material=gs.materials.Rigid(0.1),
+)
 
 scene.build()
 
@@ -42,7 +56,7 @@ dofs_idx = list(
 )
 print(dofs_idx)
 bucket_end = excavator.get_link("bucket_end_link")
-r_vel = 10.0
+r_vel = 0.0
 l_vel = 0.0
 for i in range(3000):
     if i == 0:
