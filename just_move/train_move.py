@@ -72,7 +72,7 @@ def get_cfgs():
         # joint/link names
         "default_joint_angles": {  # [rad]
             "swing_joint": 0.0,
-            "boom_joint": -0.5,
+            "boom_joint": -1.2,
             "arm_joint": 1.6,
             "bucket_joint": 0.96,
         },
@@ -93,8 +93,8 @@ def get_cfgs():
         # base pose
         "base_init_pos": [0.0, 0.0, 0.0],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
-        "episode_length_s": 30.0,
-        "at_target_threshold": 0.5,
+        "episode_length_s": 20.0,
+        "at_target_threshold": 1.0,
         "action_scale": 1.0,
         "crawler_action_scale": 10.0,
         "simulate_action_latency": False,
@@ -116,15 +116,15 @@ def get_cfgs():
         "reward_scales": {
             "target": 10.0,
             "target_arrival": 1000.0,
-            "smooth": -0.1,
+            "smooth": -0.001,
             "body_action": -0.1,
             "bucket_height": -1.0,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "x_range": [-10.0, 10.0],
-        "y_range": [-10.0, 10.0],
+        "x_range": [-5.0, 5.0],
+        "y_range": [-5.0, 5.0],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -159,6 +159,7 @@ def main():
         reward_cfg=reward_cfg,
         command_cfg=command_cfg,
     )
+    env.reset()
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
 

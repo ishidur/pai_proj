@@ -154,6 +154,7 @@ def main():
         reward_cfg=reward_cfg,
         command_cfg=command_cfg,
     )
+    env.reset()
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
 

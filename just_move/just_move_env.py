@@ -260,7 +260,7 @@ class JustMoveEnv:
             [
                 self.base_pos * self.obs_scales["base_pos"],  # 3
                 self.base_quat,  # 4
-                self.rel_pos * self.obs_scales["rel_pos"],  # 3
+                self.rel_pos,  # 3
                 self.commands,  # 3
                 self.dof_pos * self.obs_scales["dof_pos"],  # 4
                 self.dof_vel * self.obs_scales["dof_vel"],  # 4
@@ -339,6 +339,7 @@ class JustMoveEnv:
         target_rew = torch.sum(torch.square(self.last_rel_pos), dim=1) - torch.sum(
             torch.square(self.rel_pos), dim=1
         )
+        # target_rew = torch.sum(torch.abs(self.rel_pos), dim=1)
         return target_rew
 
     def _reward_smooth(self):
@@ -356,14 +357,10 @@ class JustMoveEnv:
         angular_rew = torch.norm(self.base_ang_vel, dim=1)
         return angular_rew
 
-    def _reward_base_velocity(self):
-        base_vel_rew = torch.norm(self.robot.get_vel(), dim=1)
-        return base_vel_rew
-
     def _reward_body_action(self):
         body_action_rew = torch.norm(self.actions[:, 2:], dim=1)
         return body_action_rew
 
     def _reward_bucket_height(self):
-        bucket_height = torch.square(self.bucket_end_pos[:, 2] - 1.0)
+        bucket_height = torch.square(self.bucket_end_pos[:, 2] - 4.0)
         return bucket_height
