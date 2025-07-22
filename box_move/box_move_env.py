@@ -301,13 +301,18 @@ class BoxMoveEnv:
             rew = reward_func() * self.reward_scales[name]
             self.rew_buf += rew
             self.episode_sums[name] += rew
-
+        bkt2cube = self.cube_pos - self.bucket_end_pos
+        bkt2cmd = self.commands - self.bucket_end_pos
+        cube2cmd = self.commands - self.cube_pos
         # compute observations
         self.obs_buf = torch.cat(
             [
-                self.bucket_end_pos,  # 3
-                self.cube_pos,  # 3
-                self.commands,  # 3
+                #self.bucket_end_pos,  # 3
+                #self.cube_pos,  # 3
+                #self.commands,  # 3
+                bkt2cube,
+                bkt2cmd,
+                cube2cmd,
                 self.dof_pos * self.obs_scales["dof_pos"],  # 4
                 self.dof_vel * self.obs_scales["dof_vel"],  # 4
                 self.actions,  # 4

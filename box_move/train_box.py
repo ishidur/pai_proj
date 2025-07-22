@@ -31,10 +31,10 @@ def get_train_cfg(exp_name, max_iterations):
             "entropy_coef": 0.01,
             "gamma": 0.99,
             "lam": 0.95,
-            "learning_rate": 0.00001,
+            "learning_rate": 0.0001,
             "max_grad_norm": 1.0,
             "num_learning_epochs": 5,
-            "num_mini_batches": 4,
+            "num_mini_batches": 16,
             "schedule": "adaptive",
             "use_clipped_value_loss": True,
             "value_loss_coef": 1.0,
@@ -54,8 +54,8 @@ def get_train_cfg(exp_name, max_iterations):
             "log_interval": 1,
             "max_iterations": max_iterations,
             "record_interval": -1,
-            "resume": True,
-            "resume_path": "./sphere_logs/box-move/model_1000.pt",
+            "resume": False,
+            "resume_path": None,
             "run_name": "",
         },
         "runner_class_name": "OnPolicyRunner",
@@ -107,7 +107,7 @@ def get_cfgs():
     reward_cfg = {
         "reward_scales": {
             "target": 100.0,
-            "target_arrival": 10.0,
+            "target_arrival": 100.0,
             "box_move": 100.0,
             "target_box_distance": -0.1,
             "box_bucket_distance": -0.01,
@@ -116,8 +116,8 @@ def get_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "r_range": [5.9, 6.0],
-        "azimuth_range": [-0.01 * pi, 0.01 * pi],
+        "r_range": [5.5, 6.0],
+        "azimuth_range": [-0.25 * pi, 0.25 * pi],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -126,8 +126,8 @@ def get_cfgs():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="box-move")
-    parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=1001)
+    parser.add_argument("-B", "--num_envs", type=int, default=8192)
+    parser.add_argument("--max_iterations", type=int, default=10001)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")

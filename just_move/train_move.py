@@ -32,7 +32,7 @@ def get_train_cfg(exp_name, max_iterations):
             "learning_rate": 0.001,
             "max_grad_norm": 1.0,
             "num_learning_epochs": 5,
-            "num_mini_batches": 4,
+            "num_mini_batches": 16,
             "schedule": "adaptive",
             "use_clipped_value_loss": True,
             "value_loss_coef": 1.0,
@@ -116,9 +116,9 @@ def get_cfgs():
         "reward_scales": {
             "target": 10.0,
             "target_arrival": 1000.0,
-            "smooth": -0.001,
-            "body_action": -0.1,
-            "bucket_height": -1.0,
+            # "smooth": -0.001,
+            "body_action": -0.0001,
+            "bucket_height": -0.001,
         },
     }
     command_cfg = {
@@ -133,8 +133,8 @@ def get_cfgs():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="just-move")
-    parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=501)
+    parser.add_argument("-B", "--num_envs", type=int, default=8192)
+    parser.add_argument("--max_iterations", type=int, default=4001)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")
