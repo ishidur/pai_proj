@@ -220,7 +220,9 @@ class MovePoseEnv:
         )
         self.last_actions = torch.zeros_like(self.actions)
         self.dof_pos = torch.zeros(
-            (self.num_envs, len(self.env_cfg["joint_names"])), device=gs.device, dtype=gs.tc_float
+            (self.num_envs, len(self.env_cfg["joint_names"])),
+            device=gs.device,
+            dtype=gs.tc_float,
         )
         self.dof_vel = torch.zeros_like(self.dof_pos)
         self.bucket_end_pos = torch.zeros(
@@ -229,6 +231,7 @@ class MovePoseEnv:
         self.bucket_pose = torch.zeros(
             (self.num_envs, 2), device=gs.device, dtype=gs.tc_float
         )
+        self.rel_pose = torch.zeros_like(self.bucket_pose)
         self.last_bucket_end_pos = torch.zeros_like(self.bucket_end_pos)
         self.default_dof_pos = torch.tensor(
             [
@@ -273,7 +276,7 @@ class MovePoseEnv:
             (
                 (torch.norm(self.rel_pos, dim=1) < self.env_cfg["at_target_threshold"])
                 & (
-                    torch.max(torch.abs(self.rel_pose), dim=1)
+                    torch.sum(torch.abs(self.rel_pose), dim=1)
                     < self.env_cfg["bucket_pose_threshold"]
                 )
             )
@@ -450,7 +453,10 @@ class MovePoseEnv:
 
     def _reward_base_pos(self):
         base_pos_rew = (
-            torch.clamp(torch.norm(self.commands - self.base_pos, dim=1), min=5.0) - 5.0
+            torch.clamp(
+                torch.norm(self.commands[:, :3] - self.base_pos, dim=1), min=5.0
+            )
+            - 5.0
         )
         return base_pos_rew
 
