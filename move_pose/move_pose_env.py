@@ -219,8 +219,10 @@ class MovePoseEnv:
             (self.num_envs, self.num_actions), device=gs.device, dtype=gs.tc_float
         )
         self.last_actions = torch.zeros_like(self.actions)
-        self.dof_pos = torch.zeros_like(self.actions)
-        self.dof_vel = torch.zeros_like(self.actions)
+        self.dof_pos = torch.zeros(
+            (self.num_envs, len(self.env_cfg["joint_names"])), device=gs.device, dtype=gs.tc_float
+        )
+        self.dof_vel = torch.zeros_like(self.dof_pos)
         self.bucket_end_pos = torch.zeros(
             (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
         )
