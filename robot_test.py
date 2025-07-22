@@ -1,5 +1,4 @@
 import genesis as gs
-import numpy as np
 import torch
 
 ########################## 初期化 ##########################

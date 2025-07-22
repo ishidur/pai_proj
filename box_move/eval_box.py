@@ -68,7 +68,7 @@ def main():
                 fps=env_cfg["max_visualize_FPS"],
             )
         else:
-            for _ in range(max_sim_step*5):
+            for _ in range(max_sim_step * 5):
                 actions = policy(obs)
                 obs, rews, dones, infos = env.step(actions)
 

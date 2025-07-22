@@ -5,7 +5,6 @@ import genesis as gs
 import torch
 from genesis.utils.geom import (
     inv_quat,
-    transform_by_quat,
 )
 
 
@@ -307,9 +306,9 @@ class BoxMoveEnv:
         # compute observations
         self.obs_buf = torch.cat(
             [
-                #self.bucket_end_pos,  # 3
-                #self.cube_pos,  # 3
-                #self.commands,  # 3
+                # self.bucket_end_pos,  # 3
+                # self.cube_pos,  # 3
+                # self.commands,  # 3
                 bkt2cube,
                 bkt2cmd,
                 cube2cmd,

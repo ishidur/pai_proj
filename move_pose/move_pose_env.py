@@ -178,7 +178,7 @@ class MovePoseEnv:
             )
         )
         self.bucket_end = self.robot.get_link("bucket_end_link")
-        self.swing_joint = self.robot.get_joint("swing_joint")
+        self.bucket_yaw = self.robot.get_link("body_link")
 
         # prepare reward functions and multiply reward scales by dt
         self.reward_functions, self.episode_sums = dict(), dict()
@@ -269,10 +269,7 @@ class MovePoseEnv:
     def _at_target(self):
         self.at_target = (
             (
-                (
-                    torch.norm(self.rel_pos, dim=1)
-                    < self.env_cfg["at_target_threshold"]
-                )
+                (torch.norm(self.rel_pos, dim=1) < self.env_cfg["at_target_threshold"])
                 & (
                     torch.max(torch.abs(self.rel_pose), dim=1)
                     < self.env_cfg["bucket_pose_threshold"]
@@ -316,9 +313,7 @@ class MovePoseEnv:
         self.dof_pos[:] = self.robot.get_dofs_position(self.motors_dof_idx)
         self.dof_vel[:] = self.robot.get_dofs_velocity(self.motors_dof_idx)
         self.bucket_pose[:, 0] = torch.sum(self.dof_pos[:, 1:], dim=1) + 2.44346095279
-        self.bucket_pose[:, 1] = quat_to_xyz(self.swing_joint.get_quat(), rpy=True)[
-            :, 2
-        ]
+        self.bucket_pose[:, 1] = quat_to_xyz(self.bucket_yaw.get_quat(), rpy=True)[:, 2]
         self.rel_pose = normalize_angle(self.bucket_pose - self.commands[:, 3:])
         # resample commands
         envs_idx = self._at_target()
@@ -411,7 +406,7 @@ class MovePoseEnv:
             torch.sum(self.dof_pos[envs_idx, 1:], dim=1) + 2.44346095279
         )
         self.bucket_pose[envs_idx, 1] = quat_to_xyz(
-            self.swing_joint.get_quat(envs_idx), rpy=True
+            self.bucket_yaw.get_quat(envs_idx), rpy=True
         )[:, 2]
 
         self.rel_pos = self.commands[:, :3] - self.bucket_end_pos
