@@ -5,7 +5,9 @@ import genesis as gs
 import torch
 from genesis.utils.geom import (
     inv_quat,
+    quat_to_xyz,
     transform_by_quat,
+    xyz_to_quat,
 )
 
 
@@ -13,7 +15,66 @@ def gs_rand_float(lower: float, upper: float, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class BucketTouchMoveEnv:
+def cartesian_to_spherical(cartesian_coords: torch.Tensor) -> torch.Tensor:
+    """
+    3次元直交座標系 (x, y, z) から極座標（球座標系） (r, theta, phi) に変換します。
+
+    Args:
+        cartesian_coords (torch.Tensor): (n, 3) の形状を持つTensor。各行が (x, y, z) 座標を表します。
+
+    Returns:
+        torch.Tensor: (n, 3) の形状を持つTensor。各行が (r, theta, phi) 座標を表します。
+                      - r: 原点からの距離（半径）
+                      - theta: z軸正方向からの角度（極角）。範囲は [0, pi] です。
+                      - phi: xy平面上でのx軸正方向からの角度（方位角）。範囲は [-pi, pi] です。
+    """
+    x = cartesian_coords[:, 0]
+    y = cartesian_coords[:, 1]
+    z = cartesian_coords[:, 2]
+
+    # ゼロ除算を避けるための微小な値
+    eps = 1e-8
+
+    # 半径 r の計算
+    r = torch.norm(cartesian_coords, p=2, dim=1)
+
+    # 極角 theta の計算
+    # 浮動小数点精度の問題で acos の引数が [-1, 1] の範囲外になるのを防ぐために clamp を使用
+    theta = torch.acos(torch.clamp(z / (r + eps), -1.0, 1.0))
+
+    # 方位角 phi の計算
+    phi = torch.atan2(y, x)
+
+    # 結果を (r, theta, phi) の順でスタックして返す
+    spherical_coords = torch.stack((r, theta, phi), dim=1)
+
+    return spherical_coords
+
+
+def spherical_diff(p1: torch.Tensor, p2: torch.Tensor):
+    """
+    p1, p2: [n, 3] tensor 各行が (r, theta, phi)
+    returns: (r, theta, phi) tensors of shape [n]
+    """
+
+    # 半径差（符号付き）
+    delta_r = p2[:, 0] - p1[:, 0]
+
+    # 角度差（正規化して -π〜π に収める）
+    raw_theta_diff = p2[:, 1] - p1[:, 1]
+    raw_phi_diff = p2[:, 2] - p1[:, 2]
+    delta_theta = torch.remainder(raw_theta_diff + math.pi, 2 * math.pi) - math.pi
+    delta_phi = torch.remainder(raw_phi_diff + math.pi, 2 * math.pi) - math.pi
+    normalized_diff = torch.stack((delta_r, delta_theta, delta_phi), dim=1)
+
+    return normalized_diff
+
+
+def normalize_angle(ang: torch.Tensor):
+    return torch.remainder(ang + math.pi, 2 * math.pi) - math.pi
+
+
+class MovePoseEnv:
     def __init__(
         self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False
     ):
@@ -60,9 +121,8 @@ class BucketTouchMoveEnv:
         # add target
         if self.env_cfg["visualize_target"]:
             self.target = self.scene.add_entity(
-                morph=gs.morphs.Mesh(
-                    file="meshes/sphere.obj",
-                    scale=0.05,
+                morph=gs.morphs.URDF(
+                    file="../assets/zx120/zx120-bucket.urdf",
                     fixed=False,
                     collision=False,
                 ),
@@ -79,7 +139,7 @@ class BucketTouchMoveEnv:
         if self.env_cfg["visualize_camera"]:
             self.cam = self.scene.add_camera(
                 res=(640, 480),
-                pos=(15.0, 15.0, 15.0),
+                pos=(10.0, 10.0, 10.0),
                 lookat=(0.0, 0.0, 1.0),
                 fov=40,
                 GUI=False,
@@ -118,6 +178,7 @@ class BucketTouchMoveEnv:
             )
         )
         self.bucket_end = self.robot.get_link("bucket_end_link")
+        self.swing_joint = self.robot.get_joint("swing_joint")
 
         # prepare reward functions and multiply reward scales by dt
         self.reward_functions, self.episode_sums = dict(), dict()
@@ -151,21 +212,20 @@ class BucketTouchMoveEnv:
         self.commands = torch.zeros(
             (self.num_envs, self.num_commands), device=gs.device, dtype=gs.tc_float
         )
+        self.commands_quat = torch.zeros(
+            (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
+        )
         self.actions = torch.zeros(
             (self.num_envs, self.num_actions), device=gs.device, dtype=gs.tc_float
         )
         self.last_actions = torch.zeros_like(self.actions)
-        self.dof_pos = torch.zeros(
-            (self.num_envs, len(self.motors_dof_idx)),
-            device=gs.device,
-            dtype=gs.tc_float,
-        )
-        self.dof_vel = torch.zeros_like(self.dof_pos)
+        self.dof_pos = torch.zeros_like(self.actions)
+        self.dof_vel = torch.zeros_like(self.actions)
         self.bucket_end_pos = torch.zeros(
             (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
         )
-        self.bucket_end_quat = torch.zeros(
-            (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
+        self.bucket_pose = torch.zeros(
+            (self.num_envs, 2), device=gs.device, dtype=gs.tc_float
         )
         self.last_bucket_end_pos = torch.zeros_like(self.bucket_end_pos)
         self.default_dof_pos = torch.tensor(
@@ -180,19 +240,44 @@ class BucketTouchMoveEnv:
         self.extras["observations"] = dict()
 
     def _resample_commands(self, envs_idx):
-        self.commands[envs_idx, 0] = gs_rand_float(
-            *self.command_cfg["x_range"], (len(envs_idx),), gs.device
+        x = gs_rand_float(*self.command_cfg["x_range"], (len(envs_idx),), gs.device)
+        y = gs_rand_float(*self.command_cfg["y_range"], (len(envs_idx),), gs.device)
+        z = gs_rand_float(*self.command_cfg["z_range"], (len(envs_idx),), gs.device)
+        bucket_pitch = gs_rand_float(
+            *self.command_cfg["bucket_pitch_range"], (len(envs_idx),), gs.device
         )
-        self.commands[envs_idx, 1] = gs_rand_float(
-            *self.command_cfg["y_range"], (len(envs_idx),), gs.device
+        bucket_yaw = gs_rand_float(
+            *self.command_cfg["bucket_yaw_range"], (len(envs_idx),), gs.device
         )
-        self.commands[envs_idx, 2] = gs_rand_float(
-            *self.command_cfg["z_range"], (len(envs_idx),), gs.device
+        self.commands[envs_idx, 0] = x
+        self.commands[envs_idx, 1] = y
+        self.commands[envs_idx, 2] = z
+        self.commands[envs_idx, 3] = bucket_pitch
+        self.commands[envs_idx, 4] = bucket_yaw
+        self.commands_quat[envs_idx] = xyz_to_quat(
+            torch.stack(
+                (
+                    torch.zeros_like(bucket_pitch),
+                    bucket_pitch - math.pi * 0.5,
+                    bucket_yaw,
+                ),
+                dim=1,
+            ),
+            rpy=True,
         )
 
     def _at_target(self):
         self.at_target = (
-            (torch.norm(self.rel_pos, dim=1) < self.env_cfg["at_target_threshold"])
+            (
+                (
+                    torch.norm(self.rel_pos, dim=1)
+                    < self.env_cfg["at_target_threshold"]
+                )
+                & (
+                    torch.max(torch.abs(self.rel_pose), dim=1)
+                    < self.env_cfg["bucket_pose_threshold"]
+                )
+            )
             .nonzero(as_tuple=False)
             .flatten()
         )
@@ -214,26 +299,33 @@ class BucketTouchMoveEnv:
         # update target pos
         if self.target is not None:
             self.target.set_pos(self.commands, zero_velocity=True)
+            self.target.set_quat(self.commands_quat, zero_velocity=True)
         self.scene.step()
 
         # update buffers
         self.episode_length_buf += 1
-        self.base_pos[:] = self.robot.get_pos()  # global position
+        self.base_pos[:] = self.robot.get_pos()
         self.base_quat[:] = self.robot.get_quat()
         inv_base_quat = inv_quat(self.base_quat)
         self.base_ang_vel[:] = transform_by_quat(self.robot.get_ang(), inv_base_quat)
         self.last_bucket_end_pos[:] = self.bucket_end_pos[:]
-        self.bucket_end_pos[:] = self.bucket_end.get_pos()  # global position
-        self.rel_pos = self.commands - self.bucket_end_pos
-        self.last_rel_pos = self.commands - self.last_bucket_end_pos
-        self.bucket_end_quat[:] = self.bucket_end.get_quat()
+        self.bucket_end_pos[:] = self.bucket_end.get_pos()
+        self.rel_pos = self.commands[:, :3] - self.bucket_end_pos
+        self.last_rel_pos = self.commands[:, :3] - self.last_bucket_end_pos
 
         self.dof_pos[:] = self.robot.get_dofs_position(self.motors_dof_idx)
         self.dof_vel[:] = self.robot.get_dofs_velocity(self.motors_dof_idx)
-
+        self.bucket_pose[:, 0] = torch.sum(self.dof_pos[:, 1:], dim=1) + 2.44346095279
+        self.bucket_pose[:, 1] = quat_to_xyz(self.swing_joint.get_quat(), rpy=True)[
+            :, 2
+        ]
+        self.rel_pose = normalize_angle(self.bucket_pose - self.commands[:, 3:])
         # resample commands
         envs_idx = self._at_target()
         self._resample_commands(envs_idx)
+        self.rel_pose[envs_idx] = normalize_angle(
+            self.bucket_pose[envs_idx] - self.commands[envs_idx, 3:]
+        )
 
         # check termination and reset
         self.reset_buf = self.episode_length_buf > self.max_episode_length
@@ -249,6 +341,7 @@ class BucketTouchMoveEnv:
         self.extras["time_outs"][time_out_idx] = 1.0
 
         self.reset_idx(self.reset_buf.nonzero(as_tuple=False).flatten())
+        base2target = -self.commands[:, :3] - self.base_pos
 
         # compute reward
         self.rew_buf[:] = 0.0
@@ -256,16 +349,17 @@ class BucketTouchMoveEnv:
             rew = reward_func() * self.reward_scales[name]
             self.rew_buf += rew
             self.episode_sums[name] += rew
-
         # compute observations
         self.obs_buf = torch.cat(
             [
-                self.base_pos * self.obs_scales["base_pos"],  # 3
                 self.base_quat,  # 4
-                self.rel_pos * self.obs_scales["rel_pos"],  # 3
-                self.commands,  # 3
-                self.dof_pos * self.obs_scales["dof_pos"],  # 4
-                self.dof_vel * self.obs_scales["dof_vel"],  # 4
+                base2target,  # 3
+                self.rel_pos,  # 3
+                self.rel_pose,  # 2
+                self.bucket_pose,  # 2
+                self.commands,  # 5
+                self.dof_pos,  # 4
+                self.dof_vel,  # 4
                 self.actions,  # 6
             ],
             axis=-1,
@@ -313,9 +407,16 @@ class BucketTouchMoveEnv:
         # reset buffers
         self.bucket_end_pos[envs_idx] = self.bucket_end.get_pos(envs_idx)
         self.last_bucket_end_pos[envs_idx] = self.bucket_end_pos[envs_idx]
-        self.bucket_end_quat[envs_idx] = self.bucket_end.get_quat(envs_idx)
-        self.rel_pos = self.commands - self.bucket_end_pos
-        self.last_rel_pos = self.commands - self.last_bucket_end_pos
+        self.bucket_pose[envs_idx, 0] = (
+            torch.sum(self.dof_pos[envs_idx, 1:], dim=1) + 2.44346095279
+        )
+        self.bucket_pose[envs_idx, 1] = quat_to_xyz(
+            self.swing_joint.get_quat(envs_idx), rpy=True
+        )[:, 2]
+
+        self.rel_pos = self.commands[:, :3] - self.bucket_end_pos
+        self.last_rel_pos = self.commands[:, :3] - self.last_bucket_end_pos
+
         self.last_actions[envs_idx] = 0.0
         self.episode_length_buf[envs_idx] = 0
         self.reset_buf[envs_idx] = True
@@ -330,6 +431,9 @@ class BucketTouchMoveEnv:
             self.episode_sums[key][envs_idx] = 0.0
 
         self._resample_commands(envs_idx)
+        self.rel_pose[envs_idx] = normalize_angle(
+            self.bucket_pose[envs_idx] - self.commands[envs_idx, 3:]
+        )
 
     def reset(self):
         self.reset_buf[:] = True
@@ -338,10 +442,20 @@ class BucketTouchMoveEnv:
 
     # ------------ reward functions----------------
     def _reward_target(self):
-        target_rew = torch.sum(torch.square(self.last_rel_pos), dim=1) - torch.sum(
-            torch.square(self.rel_pos), dim=1
+        target_rew = torch.sum(torch.abs(self.last_rel_pos), dim=1) - torch.sum(
+            torch.abs(self.rel_pos), dim=1
         )
         return target_rew
+
+    def _reward_bucket_pose(self):
+        pose_rew = torch.sum(torch.abs(self.rel_pose), dim=1)
+        return pose_rew
+
+    def _reward_base_pos(self):
+        base_pos_rew = (
+            torch.clamp(torch.norm(self.commands - self.base_pos, dim=1), min=5.0) - 5.0
+        )
+        return base_pos_rew
 
     def _reward_smooth(self):
         smooth_rew = torch.sum(
@@ -357,7 +471,3 @@ class BucketTouchMoveEnv:
     def _reward_angular(self):
         angular_rew = torch.norm(self.base_ang_vel, dim=1)
         return angular_rew
-
-    def _reward_base_velocity(self):
-        base_vel_rew = torch.norm(self.robot.get_vel(), dim=1)
-        return base_vel_rew
