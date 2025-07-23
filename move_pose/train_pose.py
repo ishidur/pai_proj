@@ -122,6 +122,7 @@ def get_cfgs():
             "angular": -1,
             "bucket_pose": -0.1,
             "base_pos": -0.1,
+            "base_pose": -0.1,
         },
     }
     command_cfg = {

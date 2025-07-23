@@ -23,7 +23,7 @@ from rsl_rl.runners import OnPolicyRunner
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="bucket-pose")
+    parser.add_argument("-e", "--exp_name", type=str, default="move-pose")
     parser.add_argument("--ckpt", type=int, default=1000)
     parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()

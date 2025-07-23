@@ -74,6 +74,36 @@ def normalize_angle(ang: torch.Tensor):
     return torch.remainder(ang + math.pi, 2 * math.pi) - math.pi
 
 
+def calculate_distance_tensor_batched(line_points, line_angles, points):
+    """
+    線と点のペアごとの距離を計算する関数（角度を用いる）
+    :param line_points: 線上の各点 -> Tensor型 [n, 2]
+    :param line_angles: 各線の角度（ラジアン） -> Tensor型 [n]
+    :param points: 各点 -> Tensor型 [n, 2]
+    :return: 各線と点の距離 -> Tensor型 [n]
+    """
+    # ラジアンから線の方向ベクトルを作成
+    directions = torch.stack(
+        [torch.cos(line_angles), torch.sin(line_angles)], dim=1
+    )  # [n, 2]
+    directions = directions / torch.norm(
+        directions, dim=1, keepdim=True
+    )  # 単位ベクトル化
+
+    # 各点と線上の点のベクトルを計算
+    vectors = points - line_points  # [n, 2]
+
+    # ベクトルを線の方向に投影
+    projection = (
+        torch.sum(vectors * directions, dim=1, keepdim=True)
+    ) * directions  # [n, 2]
+
+    # 点と線の距離を計算（ベクトルから投影を引いた残差のノルム）
+    distances = torch.norm(vectors - projection, dim=1)  # [n]
+
+    return distances
+
+
 class MovePoseEnv:
     def __init__(
         self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False
@@ -300,7 +330,7 @@ class MovePoseEnv:
         self.robot.control_dofs_velocity(target_dof_vel, self.motors_dof_idx)
         # update target pos
         if self.target is not None:
-            self.target.set_pos(self.commands, zero_velocity=True)
+            self.target.set_pos(self.commands[:, :3], zero_velocity=True)
             self.target.set_quat(self.commands_quat, zero_velocity=True)
         self.scene.step()
 
@@ -459,6 +489,12 @@ class MovePoseEnv:
             - 5.0
         )
         return base_pos_rew
+
+    def _reward_base_pose(self):
+        base_pose_rew = calculate_distance_tensor_batched(
+            self.commands[:, :2], self.commands[:, 4], self.base_pos[:, :2]
+        )
+        return base_pose_rew
 
     def _reward_smooth(self):
         smooth_rew = torch.sum(
