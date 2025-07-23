@@ -86,9 +86,6 @@ def calculate_distance_tensor_batched(line_points, line_angles, points):
     directions = torch.stack(
         [torch.cos(line_angles), torch.sin(line_angles)], dim=1
     )  # [n, 2]
-    directions = directions / torch.norm(
-        directions, dim=1, keepdim=True
-    )  # 単位ベクトル化
 
     # 各点と線上の点のベクトルを計算
     vectors = points - line_points  # [n, 2]

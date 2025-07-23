@@ -118,17 +118,17 @@ def get_cfgs():
         "reward_scales": {
             "target": 10.0,
             "target_arrival": 1000.0,
-            "smooth": -0.1,
-            "angular": -1,
+            # "smooth": -0.1,
+            "angular": -1.0,
             "bucket_pose": -1.0,
             "base_pos": -0.1,
-            "base_pose": -0.1,
+            "base_pose": -0.001,
         },
     }
     command_cfg = {
         "num_commands": 5,
-        "x_range": [-10.0, 10.0],
-        "y_range": [-10.0, 10.0],
+        "x_range": [-6.0, 6.0],
+        "y_range": [-6.0, 6.0],
         "z_range": [0.0, 6.0],
         "bucket_pitch_range": [pi, 1.75 * pi],
         "bucket_yaw_range": [-pi, pi],
