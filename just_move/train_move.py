@@ -104,13 +104,8 @@ def get_cfgs():
         "max_visualize_FPS": 60,
     }
     obs_cfg = {
-        "num_obs": 27,
-        "obs_scales": {
-            "base_pos": 0.1,
-            "rel_pos": 0.1,
-            "dof_pos": 1.0,
-            "dof_vel": 1.0,
-        },
+        "num_obs": 24,
+        "obs_scales": {},
     }
     reward_cfg = {
         "reward_scales": {

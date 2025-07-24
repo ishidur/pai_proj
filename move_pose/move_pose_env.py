@@ -259,6 +259,7 @@ class MovePoseEnv:
             (self.num_envs, 2), device=gs.device, dtype=gs.tc_float
         )
         self.rel_pose = torch.zeros_like(self.bucket_pose)
+        self.last_rel_pose = torch.zeros_like(self.rel_pose)
         self.last_bucket_end_pos = torch.zeros_like(self.bucket_end_pos)
         self.default_dof_pos = torch.tensor(
             [
@@ -346,6 +347,7 @@ class MovePoseEnv:
         self.dof_vel[:] = self.robot.get_dofs_velocity(self.motors_dof_idx)
         self.bucket_pose[:, 0] = torch.sum(self.dof_pos[:, 1:], dim=1) + 2.44346095279
         self.bucket_pose[:, 1] = quat_to_xyz(self.bucket_yaw.get_quat(), rpy=True)[:, 2]
+        self.last_rel_pose[:] = self.rel_pose[:]
         self.rel_pose = normalize_angle(self.bucket_pose - self.commands[:, 3:])
         # resample commands
         envs_idx = self._at_target()
@@ -353,6 +355,7 @@ class MovePoseEnv:
         self.rel_pose[envs_idx] = normalize_angle(
             self.bucket_pose[envs_idx] - self.commands[envs_idx, 3:]
         )
+        self.last_rel_pose[envs_idx] = self.rel_pose[envs_idx]
 
         # check termination and reset
         self.reset_buf = self.episode_length_buf > self.max_episode_length
@@ -463,6 +466,7 @@ class MovePoseEnv:
         self.rel_pose[envs_idx] = normalize_angle(
             self.bucket_pose[envs_idx] - self.commands[envs_idx, 3:]
         )
+        self.last_rel_pose[envs_idx] = self.rel_pose[envs_idx]
 
     def reset(self):
         self.reset_buf[:] = True
@@ -477,7 +481,9 @@ class MovePoseEnv:
         return target_rew
 
     def _reward_bucket_pose(self):
-        pose_rew = torch.sum(torch.abs(self.rel_pose), dim=1)
+        pose_rew = torch.sum(torch.abs(self.last_rel_pos), dim=1) - torch.sum(
+            torch.abs(self.rel_pose), dim=1
+        )
         return pose_rew
 
     def _reward_base_pos(self):

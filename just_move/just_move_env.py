@@ -255,15 +255,15 @@ class JustMoveEnv:
             self.rew_buf += rew
             self.episode_sums[name] += rew
 
+        base2bucket = self.bucket_end_pos - self.base_pos
         # compute observations
         self.obs_buf = torch.cat(
             [
-                self.base_pos * self.obs_scales["base_pos"],  # 3
                 self.base_quat,  # 4
                 self.rel_pos,  # 3
-                self.commands,  # 3
-                self.dof_pos * self.obs_scales["dof_pos"],  # 4
-                self.dof_vel * self.obs_scales["dof_vel"],  # 4
+                base2bucket,  # 3
+                self.dof_pos,  # 4
+                self.dof_vel,  # 4
                 self.actions,  # 6
             ],
             axis=-1,

@@ -116,11 +116,11 @@ def get_cfgs():
     }
     reward_cfg = {
         "reward_scales": {
-            "target": 10.0,
+            "target": 100.0,
             "target_arrival": 1000.0,
             # "smooth": -0.1,
             "angular": -1.0,
-            "bucket_pose": -1.0,
+            "bucket_pose": 100.0,
             "base_pos": -0.1,
             "base_pose": -0.001,
         },
