@@ -481,7 +481,7 @@ class MovePoseEnv:
         return target_rew
 
     def _reward_bucket_pose(self):
-        pose_rew = torch.sum(torch.abs(self.last_rel_pos), dim=1) - torch.sum(
+        pose_rew = torch.sum(torch.abs(self.last_rel_pose), dim=1) - torch.sum(
             torch.abs(self.rel_pose), dim=1
         )
         return pose_rew
