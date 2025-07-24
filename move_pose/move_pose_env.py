@@ -369,6 +369,7 @@ class MovePoseEnv:
 
         self.reset_idx(self.reset_buf.nonzero(as_tuple=False).flatten())
         base2target = self.commands[:, :3] - self.base_pos
+        base2bucket = self.bucket_end_pos - self.base_pos
 
         # compute reward
         self.rew_buf[:] = 0.0
@@ -381,10 +382,11 @@ class MovePoseEnv:
             [
                 self.base_quat,  # 4
                 base2target,  # 3
+                base2bucket,  # 3
                 self.rel_pos,  # 3
                 self.rel_pose,  # 2
                 self.bucket_pose,  # 2
-                self.commands,  # 5
+                self.commands[:, 3:],  # 2
                 self.dof_pos,  # 4
                 self.dof_vel,  # 4
                 self.actions,  # 6
