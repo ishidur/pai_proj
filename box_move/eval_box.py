@@ -23,8 +23,8 @@ from rsl_rl.runners import OnPolicyRunner
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="box-move")
-    parser.add_argument("--ckpt", type=int, default=1000)
+    parser.add_argument("-e", "--exp_name", type=str, default="box-move-best")
+    parser.add_argument("--ckpt", type=int, default=10000)
     parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -55,7 +55,7 @@ def main():
     policy = runner.get_inference_policy(device=gs.device)
 
     obs, _ = env.reset()
-    max_sim_step = int(env_cfg["episode_length_s"] * env_cfg["max_visualize_FPS"])
+    max_sim_step = int(env_cfg["episode_length_s"] * env_cfg["max_visualize_FPS"] * 3)
     with torch.no_grad():
         if args.record:
             env.cam.start_recording()
@@ -68,7 +68,7 @@ def main():
                 fps=env_cfg["max_visualize_FPS"],
             )
         else:
-            for _ in range(max_sim_step * 5):
+            for _ in range(max_sim_step):
                 actions = policy(obs)
                 obs, rews, dones, infos = env.step(actions)
 

@@ -122,9 +122,8 @@ class BoxMoveEnv:
         # add target
         if self.env_cfg["visualize_target"]:
             self.target = self.scene.add_entity(
-                morph=gs.morphs.Mesh(
-                    file="meshes/sphere.obj",
-                    scale=0.05,
+                morph=gs.morphs.Sphere(
+                    radius=0.15,
                     fixed=False,
                     collision=False,
                 ),

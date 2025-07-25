@@ -23,8 +23,8 @@ from rsl_rl.runners import OnPolicyRunner
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="just-move")
-    parser.add_argument("--ckpt", type=int, default=500)
+    parser.add_argument("-e", "--exp_name", type=str, default="just-move-best")
+    parser.add_argument("--ckpt", type=int, default=2000)
     parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()
 
