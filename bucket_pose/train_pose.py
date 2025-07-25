@@ -15,8 +15,10 @@ except (metadata.PackageNotFoundError, ImportError) as e:
     raise ImportError(
         "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
     ) from e
+from math import pi
+
 import genesis as gs
-from just_move_env import JustMoveEnv
+from bucket_pose_env import BucketPoseEnv
 from rsl_rl.runners import OnPolicyRunner
 
 
@@ -32,7 +34,7 @@ def get_train_cfg(exp_name, max_iterations):
             "learning_rate": 0.001,
             "max_grad_norm": 1.0,
             "num_learning_epochs": 5,
-            "num_mini_batches": 16,
+            "num_mini_batches": 4,
             "schedule": "adaptive",
             "use_clipped_value_loss": True,
             "value_loss_coef": 1.0,
@@ -68,11 +70,11 @@ def get_train_cfg(exp_name, max_iterations):
 
 def get_cfgs():
     env_cfg = {
-        "num_actions": 6,
+        "num_actions": 4,
         # joint/link names
         "default_joint_angles": {  # [rad]
             "swing_joint": 0.0,
-            "boom_joint": -1.2,
+            "boom_joint": -0.5,
             "arm_joint": 1.6,
             "bucket_joint": 0.96,
         },
@@ -82,21 +84,13 @@ def get_cfgs():
             "arm_joint",
             "bucket_joint",
         ],
-        "crawler_joints": [
-            "left_front_wheel_joint",
-            "right_front_wheel_joint",
-            "left_middle_wheel_joint",
-            "right_middle_wheel_joint",
-            "left_rear_wheel_joint",
-            "right_rear_wheel_joint",
-        ],
         # base pose
         "base_init_pos": [0.0, 0.0, 0.0],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
-        "at_target_threshold": 1.0,
+        "at_target_threshold": 0.5,
+        "bucket_pose_threshold": 0.1,  # about 5~6 degs
         "action_scale": 1.0,
-        "crawler_action_scale": 10.0,
         "simulate_action_latency": False,
         "clip_actions": 1.0,
         "visualize_target": False,
@@ -104,22 +98,28 @@ def get_cfgs():
         "max_visualize_FPS": 60,
     }
     obs_cfg = {
-        "num_obs": 24,
-        "obs_scales": {},
+        "num_obs": 20,
+        "obs_scales": {
+            "rel_pos": 1.0,
+            "dof_pos": 1.0,
+            "dof_vel": 1.0,
+        },
     }
     reward_cfg = {
         "reward_scales": {
             "target": 10.0,
             "target_arrival": 1000.0,
-            # "smooth": -0.001,
-            "body_action": -0.0001,
-            "bucket_height": -0.001,
+            "smooth": -0.1,
+            "angular": -1,
+            "bucket_pose": -0.1,
         },
     }
     command_cfg = {
-        "num_commands": 3,
-        "x_range": [-5.0, 5.0],
-        "y_range": [-5.0, 5.0],
+        "num_commands": 4,
+        "r_range": [3.5, 6.0],
+        "azimuth_range": [-pi, pi],
+        "altitude_range": [pi / 10, pi / 4],
+        "bucket_pitch_range": [1.25 * pi, 1.75 * pi],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -127,9 +127,9 @@ def get_cfgs():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="just-move")
-    parser.add_argument("-B", "--num_envs", type=int, default=8192)
-    parser.add_argument("--max_iterations", type=int, default=4001)
+    parser.add_argument("-e", "--exp_name", type=str, default="bucket-pose")
+    parser.add_argument("-B", "--num_envs", type=int, default=4096)
+    parser.add_argument("--max_iterations", type=int, default=1001)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")
@@ -147,7 +147,7 @@ def main():
         open(f"{log_dir}/cfgs.pkl", "wb"),
     )
 
-    env = JustMoveEnv(
+    env = BucketPoseEnv(
         num_envs=args.num_envs,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,

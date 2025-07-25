@@ -6,6 +6,7 @@ import torch
 from genesis.utils.geom import (
     inv_quat,
     transform_by_quat,
+    xyz_to_quat,
 )
 
 
@@ -13,7 +14,62 @@ def gs_rand_float(lower: float, upper: float, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class JustMoveEnv:
+def cartesian_to_spherical(cartesian_coords: torch.Tensor) -> torch.Tensor:
+    """
+    3次元直交座標系 (x, y, z) から極座標（球座標系） (r, theta, phi) に変換します。
+
+    Args:
+        cartesian_coords (torch.Tensor): (n, 3) の形状を持つTensor。各行が (x, y, z) 座標を表します。
+
+    Returns:
+        torch.Tensor: (n, 3) の形状を持つTensor。各行が (r, theta, phi) 座標を表します。
+                      - r: 原点からの距離（半径）
+                      - theta: z軸正方向からの角度（極角）。範囲は [0, pi] です。
+                      - phi: xy平面上でのx軸正方向からの角度（方位角）。範囲は [-pi, pi] です。
+    """
+    x = cartesian_coords[:, 0]
+    y = cartesian_coords[:, 1]
+    z = cartesian_coords[:, 2]
+
+    # ゼロ除算を避けるための微小な値
+    eps = 1e-8
+
+    # 半径 r の計算
+    r = torch.norm(cartesian_coords, p=2, dim=1)
+
+    # 極角 theta の計算
+    # 浮動小数点精度の問題で acos の引数が [-1, 1] の範囲外になるのを防ぐために clamp を使用
+    theta = torch.acos(torch.clamp(z / (r + eps), -1.0, 1.0))
+
+    # 方位角 phi の計算
+    phi = torch.atan2(y, x)
+
+    # 結果を (r, theta, phi) の順でスタックして返す
+    spherical_coords = torch.stack((r, theta, phi), dim=1)
+
+    return spherical_coords
+
+
+def spherical_diff(p1: torch.Tensor, p2: torch.Tensor):
+    """
+    p1, p2: [n, 3] tensor 各行が (r, theta, phi)
+    returns: (r, theta, phi) tensors of shape [n]
+    """
+
+    # 半径差（符号付き）
+    delta_r = p2[:, 0] - p1[:, 0]
+
+    # 角度差（正規化して -π〜π に収める）
+    raw_theta_diff = p2[:, 1] - p1[:, 1]
+    raw_phi_diff = p2[:, 2] - p1[:, 2]
+    delta_theta = torch.remainder(raw_theta_diff + math.pi, 2 * math.pi) - math.pi
+    delta_phi = torch.remainder(raw_phi_diff + math.pi, 2 * math.pi) - math.pi
+    normalized_diff = torch.stack((delta_r, delta_theta, delta_phi), dim=1)
+
+    return normalized_diff
+
+
+class BucketPoseEnv:
     def __init__(
         self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False
     ):
@@ -60,9 +116,8 @@ class JustMoveEnv:
         # add target
         if self.env_cfg["visualize_target"]:
             self.target = self.scene.add_entity(
-                morph=gs.morphs.Mesh(
-                    file="meshes/sphere.obj",
-                    scale=0.05,
+                morph=gs.morphs.URDF(
+                    file="../assets/zx120/zx120-bucket.urdf",
                     fixed=False,
                     collision=False,
                 ),
@@ -79,7 +134,7 @@ class JustMoveEnv:
         if self.env_cfg["visualize_camera"]:
             self.cam = self.scene.add_camera(
                 res=(640, 480),
-                pos=(15.0, 15.0, 15.0),
+                pos=(10.0, 10.0, 10.0),
                 lookat=(0.0, 0.0, 1.0),
                 fov=40,
                 GUI=False,
@@ -101,14 +156,6 @@ class JustMoveEnv:
         self.scene.build(n_envs=num_envs)
 
         # names to indices
-        self.crawlers_dof_idx = list(
-            chain.from_iterable(
-                [
-                    self.robot.get_joint(name).dofs_idx_local
-                    for name in self.env_cfg["crawler_joints"]
-                ]
-            )
-        )
         self.motors_dof_idx = list(
             chain.from_iterable(
                 [
@@ -151,23 +198,25 @@ class JustMoveEnv:
         self.commands = torch.zeros(
             (self.num_envs, self.num_commands), device=gs.device, dtype=gs.tc_float
         )
+        self.commands_cart = torch.zeros(
+            (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
+        )
+        self.commands_quat = torch.zeros(
+            (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
+        )
         self.actions = torch.zeros(
             (self.num_envs, self.num_actions), device=gs.device, dtype=gs.tc_float
         )
         self.last_actions = torch.zeros_like(self.actions)
-        self.dof_pos = torch.zeros(
-            (self.num_envs, len(self.motors_dof_idx)),
-            device=gs.device,
-            dtype=gs.tc_float,
-        )
-        self.dof_vel = torch.zeros_like(self.dof_pos)
+        self.dof_pos = torch.zeros_like(self.actions)
+        self.dof_vel = torch.zeros_like(self.actions)
         self.bucket_end_pos = torch.zeros(
             (self.num_envs, 3), device=gs.device, dtype=gs.tc_float
         )
-        self.bucket_end_quat = torch.zeros(
-            (self.num_envs, 4), device=gs.device, dtype=gs.tc_float
+        self.bucket_pose = torch.zeros(
+            (self.num_envs,), device=gs.device, dtype=gs.tc_float
         )
-        self.last_base_pos = torch.zeros_like(self.base_pos)
+        self.last_bucket_end_pos = torch.zeros_like(self.bucket_end_pos)
         self.default_dof_pos = torch.tensor(
             [
                 self.env_cfg["default_joint_angles"][name]
@@ -180,17 +229,47 @@ class JustMoveEnv:
         self.extras["observations"] = dict()
 
     def _resample_commands(self, envs_idx):
-        self.commands[envs_idx, 0] = gs_rand_float(
-            *self.command_cfg["x_range"], (len(envs_idx),), gs.device
+        r = gs_rand_float(*self.command_cfg["r_range"], (len(envs_idx),), gs.device)
+        az = gs_rand_float(
+            *self.command_cfg["azimuth_range"], (len(envs_idx),), gs.device
         )
-        self.commands[envs_idx, 1] = gs_rand_float(
-            *self.command_cfg["y_range"], (len(envs_idx),), gs.device
+        alt = gs_rand_float(
+            *self.command_cfg["altitude_range"], (len(envs_idx),), gs.device
         )
-        self.commands[envs_idx, 2] = 0.0
+        bucket_pitch = gs_rand_float(
+            *self.command_cfg["bucket_pitch_range"], (len(envs_idx),), gs.device
+        )
+        self.commands[envs_idx, 0] = r
+        self.commands[envs_idx, 1] = alt
+        self.commands[envs_idx, 2] = az
+        self.commands[envs_idx, 3] = bucket_pitch
+        self.commands_cart[envs_idx, 0] = r * torch.cos(alt) * torch.cos(az)
+        self.commands_cart[envs_idx, 1] = r * torch.cos(alt) * torch.sin(az)
+        self.commands_cart[envs_idx, 2] = r * torch.sin(alt)
+        self.commands_quat[envs_idx] = xyz_to_quat(
+            torch.stack(
+                (
+                    torch.zeros_like(bucket_pitch),
+                    bucket_pitch - math.pi * 0.5,
+                    az,
+                ),
+                dim=1,
+            ),
+            rpy=True,
+        )
 
     def _at_target(self):
         self.at_target = (
-            (torch.norm(self.rel_pos, dim=1) < self.env_cfg["at_target_threshold"])
+            (
+                (
+                    torch.norm(self.rel_pos_cart, dim=1)
+                    < self.env_cfg["at_target_threshold"]
+                )
+                & (
+                    torch.abs(self.bucket_pose - self.commands[:, 3])
+                    < self.env_cfg["bucket_pose_threshold"]
+                )
+            )
             .nonzero(as_tuple=False)
             .flatten()
         )
@@ -203,31 +282,33 @@ class JustMoveEnv:
         exec_actions = (
             self.last_actions if self.simulate_action_latency else self.actions
         )
-        target_crawler_vel = (
-            exec_actions[:, :2].repeat(1, 3) * self.env_cfg["crawler_action_scale"]
-        )
-        self.robot.control_dofs_velocity(target_crawler_vel, self.crawlers_dof_idx)
-        target_dof_vel = exec_actions[:, 2:] * self.env_cfg["action_scale"]
+        target_dof_vel = exec_actions * self.env_cfg["action_scale"]
         self.robot.control_dofs_velocity(target_dof_vel, self.motors_dof_idx)
         # update target pos
         if self.target is not None:
-            self.target.set_pos(self.commands, zero_velocity=True)
+            self.target.set_pos(self.commands_cart, zero_velocity=True)
+            self.target.set_quat(self.commands_quat, zero_velocity=True)
         self.scene.step()
 
         # update buffers
         self.episode_length_buf += 1
-        self.last_base_pos[:] = self.base_pos[:]
-        self.base_pos[:] = self.robot.get_pos()  # global position
+        self.base_pos[:] = self.robot.get_pos()
         self.base_quat[:] = self.robot.get_quat()
         inv_base_quat = inv_quat(self.base_quat)
         self.base_ang_vel[:] = transform_by_quat(self.robot.get_ang(), inv_base_quat)
-        self.bucket_end_pos[:] = self.bucket_end.get_pos()  # global position
-        self.rel_pos = self.commands - self.base_pos
-        self.last_rel_pos = self.commands - self.last_base_pos
-        self.bucket_end_quat[:] = self.bucket_end.get_quat()
+        self.last_bucket_end_pos[:] = self.bucket_end_pos[:]
+        bckt_end_pos = self.bucket_end.get_pos()
+        self.rel_pos_cart = self.commands_cart - bckt_end_pos
+        self.bucket_end_pos[:] = cartesian_to_spherical(bckt_end_pos)
+
+        self.rel_pos = spherical_diff(self.commands[:, :3], self.bucket_end_pos)
+        self.last_rel_pos = spherical_diff(
+            self.commands[:, :3], self.last_bucket_end_pos
+        )
 
         self.dof_pos[:] = self.robot.get_dofs_position(self.motors_dof_idx)
         self.dof_vel[:] = self.robot.get_dofs_velocity(self.motors_dof_idx)
+        self.bucket_pose[:] = torch.sum(self.dof_pos[:, 1:], dim=1) + 2.44346095279
 
         # resample commands
         envs_idx = self._at_target()
@@ -255,16 +336,15 @@ class JustMoveEnv:
             self.rew_buf += rew
             self.episode_sums[name] += rew
 
-        base2bucket = self.bucket_end_pos - self.base_pos
         # compute observations
         self.obs_buf = torch.cat(
             [
-                self.base_quat,  # 4
-                self.rel_pos,  # 3
-                base2bucket,  # 3
-                self.dof_pos,  # 4
-                self.dof_vel,  # 4
-                self.actions,  # 6
+                self.rel_pos * self.obs_scales["rel_pos"],  # 3
+                self.bucket_pose.reshape(-1, 1),  # 1
+                self.commands,  # 4
+                self.dof_pos * self.obs_scales["dof_pos"],  # 4
+                self.dof_vel * self.obs_scales["dof_vel"],  # 4
+                self.actions,  # 4
             ],
             axis=-1,
         )
@@ -309,11 +389,18 @@ class JustMoveEnv:
         self.robot.zero_all_dofs_velocity(envs_idx)
 
         # reset buffers
-        self.bucket_end_pos[envs_idx] = self.bucket_end.get_pos(envs_idx)
-        self.last_base_pos[envs_idx] = self.base_pos[envs_idx]
-        self.bucket_end_quat[envs_idx] = self.bucket_end.get_quat(envs_idx)
-        self.rel_pos = self.commands - self.base_pos
-        self.last_rel_pos = self.commands - self.last_base_pos
+        self.bucket_end_pos[envs_idx] = cartesian_to_spherical(
+            self.bucket_end.get_pos(envs_idx)
+        )
+        self.last_bucket_end_pos[envs_idx] = self.bucket_end_pos[envs_idx]
+        self.bucket_pose[envs_idx] = (
+            torch.sum(self.dof_pos[envs_idx, 1:], dim=1) + 2.44346095279
+        )
+
+        self.rel_pos = spherical_diff(self.commands[:, :3], self.bucket_end_pos)
+        self.last_rel_pos = spherical_diff(
+            self.commands[:, :3], self.last_bucket_end_pos
+        )
         self.last_actions[envs_idx] = 0.0
         self.episode_length_buf[envs_idx] = 0
         self.reset_buf[envs_idx] = True
@@ -336,11 +423,16 @@ class JustMoveEnv:
 
     # ------------ reward functions----------------
     def _reward_target(self):
-        target_rew = torch.sum(torch.square(self.last_rel_pos), dim=1) - torch.sum(
-            torch.square(self.rel_pos), dim=1
+        last_sq = torch.abs(self.last_rel_pos)
+        now_sq = torch.abs(self.rel_pos)
+        target_rew = (last_sq[:, 0] - now_sq[:, 0]) + 10.0 * (
+            torch.sum(last_sq[:, 1:], dim=1) - torch.sum(now_sq[:, 1:], dim=1)
         )
-        # target_rew = torch.sum(torch.abs(self.rel_pos), dim=1)
         return target_rew
+
+    def _reward_bucket_pose(self):
+        pose_rew = torch.abs(self.bucket_pose - self.commands[:, 3])
+        return pose_rew
 
     def _reward_smooth(self):
         smooth_rew = torch.sum(
@@ -356,11 +448,3 @@ class JustMoveEnv:
     def _reward_angular(self):
         angular_rew = torch.norm(self.base_ang_vel, dim=1)
         return angular_rew
-
-    def _reward_body_action(self):
-        body_action_rew = torch.norm(self.actions[:, 2:], dim=1)
-        return body_action_rew
-
-    def _reward_bucket_height(self):
-        bucket_height = torch.square(self.bucket_end_pos[:, 2] - 4.0)
-        return bucket_height

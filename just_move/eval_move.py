@@ -16,11 +16,9 @@ except (metadata.PackageNotFoundError, ImportError) as e:
     raise ImportError(
         "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
     ) from e
-from rsl_rl.runners import OnPolicyRunner
-
 import genesis as gs
-
 from just_move_env import JustMoveEnv
+from rsl_rl.runners import OnPolicyRunner
 
 
 def main():

@@ -1,11 +1,12 @@
-import torch
 import math
-import genesis as gs
-from genesis.utils.geom import (
-    transform_by_quat,
-    inv_quat,
-)
 from itertools import chain
+
+import genesis as gs
+import torch
+from genesis.utils.geom import (
+    inv_quat,
+    transform_by_quat,
+)
 
 
 def gs_rand_float(lower: float, upper: float, shape, device):
@@ -385,8 +386,8 @@ class BucketTouchEnv:
 
     # ------------ reward functions----------------
     def _reward_target(self):
-        last_sq = torch.square(self.last_rel_pos)
-        now_sq = torch.square(self.rel_pos)
+        last_sq = torch.abs(self.last_rel_pos)
+        now_sq = torch.abs(self.rel_pos)
         target_rew = (last_sq[:, 0] - now_sq[:, 0]) + 10.0 * (
             torch.sum(last_sq[:, 1:], dim=1) - torch.sum(now_sq[:, 1:], dim=1)
         )

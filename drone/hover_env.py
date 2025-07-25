@@ -1,11 +1,12 @@
-import torch
-import math
 import copy
+import math
+
 import genesis as gs
+import torch
 from genesis.utils.geom import (
+    inv_quat,
     quat_to_xyz,
     transform_by_quat,
-    inv_quat,
     transform_quat_by_quat,
 )
 

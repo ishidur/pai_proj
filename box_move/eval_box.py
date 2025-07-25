@@ -17,13 +17,13 @@ except (metadata.PackageNotFoundError, ImportError) as e:
         "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
     ) from e
 import genesis as gs
-from bucket_touch_env import BucketTouchEnv
+from box_move_env import BoxMoveEnv
 from rsl_rl.runners import OnPolicyRunner
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="bucket-touch")
+    parser.add_argument("-e", "--exp_name", type=str, default="box-move")
     parser.add_argument("--ckpt", type=int, default=1000)
     parser.add_argument("-r", "--record", action="store_true", default=False)
     args = parser.parse_args()
@@ -34,13 +34,13 @@ def main():
     env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(
         open(f"logs/{args.exp_name}/cfgs.pkl", "rb")
     )
-    reward_cfg["reward_scales"] = {}
+    # reward_cfg["reward_scales"] = {}
     # visualize the target
     env_cfg["visualize_target"] = True
     if args.record:
         env_cfg["visualize_camera"] = True
 
-    env = BucketTouchEnv(
+    env = BoxMoveEnv(
         num_envs=1,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,
@@ -68,7 +68,7 @@ def main():
                 fps=env_cfg["max_visualize_FPS"],
             )
         else:
-            for _ in range(max_sim_step):
+            for _ in range(max_sim_step * 5):
                 actions = policy(obs)
                 obs, rews, dones, infos = env.step(actions)
 

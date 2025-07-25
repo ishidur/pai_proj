@@ -15,8 +15,10 @@ except (metadata.PackageNotFoundError, ImportError) as e:
     raise ImportError(
         "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
     ) from e
+from math import pi
+
 import genesis as gs
-from just_move_env import JustMoveEnv
+from move_pose_env import MovePoseEnv
 from rsl_rl.runners import OnPolicyRunner
 
 
@@ -94,7 +96,8 @@ def get_cfgs():
         "base_init_pos": [0.0, 0.0, 0.0],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
-        "at_target_threshold": 1.0,
+        "at_target_threshold": 0.5,
+        "bucket_pose_threshold": 0.1,  # about 5~6 degs
         "action_scale": 1.0,
         "crawler_action_scale": 10.0,
         "simulate_action_latency": False,
@@ -104,22 +107,31 @@ def get_cfgs():
         "max_visualize_FPS": 60,
     }
     obs_cfg = {
-        "num_obs": 24,
-        "obs_scales": {},
+        "num_obs": 33,
+        "obs_scales": {
+            "rel_pos": 1.0,
+            "dof_pos": 1.0,
+            "dof_vel": 1.0,
+        },
     }
     reward_cfg = {
         "reward_scales": {
-            "target": 10.0,
+            "target": 100.0,
             "target_arrival": 1000.0,
-            # "smooth": -0.001,
-            "body_action": -0.0001,
-            "bucket_height": -0.001,
+            # "smooth": -0.1,
+            "angular": -1.0,
+            "bucket_pose": 100.0,
+            "base_pos": -0.1,
+            "base_pose": -0.001,
         },
     }
     command_cfg = {
-        "num_commands": 3,
-        "x_range": [-5.0, 5.0],
-        "y_range": [-5.0, 5.0],
+        "num_commands": 5,
+        "x_range": [-6.0, 6.0],
+        "y_range": [-6.0, 6.0],
+        "z_range": [0.0, 6.0],
+        "bucket_pitch_range": [pi, 1.75 * pi],
+        "bucket_yaw_range": [-pi, pi],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -127,9 +139,9 @@ def get_cfgs():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="just-move")
+    parser.add_argument("-e", "--exp_name", type=str, default="move-pose")
     parser.add_argument("-B", "--num_envs", type=int, default=8192)
-    parser.add_argument("--max_iterations", type=int, default=4001)
+    parser.add_argument("--max_iterations", type=int, default=10001)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")
@@ -147,7 +159,7 @@ def main():
         open(f"{log_dir}/cfgs.pkl", "wb"),
     )
 
-    env = JustMoveEnv(
+    env = MovePoseEnv(
         num_envs=args.num_envs,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,

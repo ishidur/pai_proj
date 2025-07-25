@@ -1,10 +1,11 @@
-import torch
 import math
+
 import genesis as gs
+import torch
 from genesis.utils.geom import (
+    inv_quat,
     quat_to_xyz,
     transform_by_quat,
-    inv_quat,
     transform_quat_by_quat,
 )
 
@@ -79,17 +80,6 @@ class Go2Env:
                 file="urdf/go2/urdf/go2.urdf",
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
-            ),
-        )
-        terrain = self.scene.add_entity(
-            morph=gs.morphs.Terrain(
-                pos=(-5, -5, 0),
-                n_subterrains=(2, 2),
-                subterrain_size=(5.0, 5.0),
-                subterrain_types=[
-                    ["wave_terrain", "random_uniform_terrain"],
-                    ["pyramid_sloped_terrain", "discrete_obstacles_terrain"],
-                ],
             ),
         )
 

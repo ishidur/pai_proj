@@ -15,10 +15,11 @@ except (metadata.PackageNotFoundError, ImportError) as e:
     raise ImportError(
         "Please uninstall 'rsl_rl' and install 'rsl-rl-lib==2.2.4'."
     ) from e
-from rsl_rl.runners import OnPolicyRunner
-import genesis as gs
+from math import pi
 
-from bucket_touch_move_env import BucketTouchMoveEnv
+import genesis as gs
+from box_move_env import BoxMoveEnv
+from rsl_rl.runners import OnPolicyRunner
 
 
 def get_train_cfg(exp_name, max_iterations):
@@ -30,10 +31,10 @@ def get_train_cfg(exp_name, max_iterations):
             "entropy_coef": 0.01,
             "gamma": 0.99,
             "lam": 0.95,
-            "learning_rate": 0.001,
+            "learning_rate": 0.0001,
             "max_grad_norm": 1.0,
             "num_learning_epochs": 5,
-            "num_mini_batches": 4,
+            "num_mini_batches": 16,
             "schedule": "adaptive",
             "use_clipped_value_loss": True,
             "value_loss_coef": 1.0,
@@ -69,11 +70,11 @@ def get_train_cfg(exp_name, max_iterations):
 
 def get_cfgs():
     env_cfg = {
-        "num_actions": 6,
+        "num_actions": 4,
         # joint/link names
         "default_joint_angles": {  # [rad]
             "swing_joint": 0.0,
-            "boom_joint": -0.5,
+            "boom_joint": -1.2,
             "arm_joint": 1.6,
             "bucket_joint": 0.96,
         },
@@ -83,21 +84,13 @@ def get_cfgs():
             "arm_joint",
             "bucket_joint",
         ],
-        "crawler_joints": [
-            "left_front_wheel_joint",
-            "right_front_wheel_joint",
-            "left_middle_wheel_joint",
-            "right_middle_wheel_joint",
-            "left_rear_wheel_joint",
-            "right_rear_wheel_joint",
-        ],
         # base pose
         "base_init_pos": [0.0, 0.0, 0.0],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
-        "episode_length_s": 50.0,
+        "box_init_pos": [4.0, 0.0, 0.3],
+        "episode_length_s": 10.0,
         "at_target_threshold": 0.5,
         "action_scale": 1.0,
-        "crawler_action_scale": 10.0,
         "simulate_action_latency": False,
         "clip_actions": 1.0,
         "visualize_target": False,
@@ -105,28 +98,26 @@ def get_cfgs():
         "max_visualize_FPS": 60,
     }
     obs_cfg = {
-        "num_obs": 27,
+        "num_obs": 21,
         "obs_scales": {
-            "base_pos": 0.1,
-            "rel_pos": 0.1,
             "dof_pos": 1.0,
             "dof_vel": 1.0,
         },
     }
     reward_cfg = {
         "reward_scales": {
-            "target": 10.0,
-            "target_arrival": 1000.0,
-            "smooth": -0.1,
-            "angular": -1,
-            "base_velocity": -1,
+            "target": 100.0,
+            "target_arrival": 100.0,
+            "box_move": 100.0,
+            "target_box_distance": -0.1,
+            "box_bucket_distance": -0.01,
+            # "angular": -1.0,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "x_range": [-10.0, 10.0],
-        "y_range": [-10.0, 10.0],
-        "z_range": [0, 6.0],
+        "r_range": [5.5, 6.0],
+        "azimuth_range": [-0.25 * pi, 0.25 * pi],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -134,9 +125,9 @@ def get_cfgs():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="move-touch")
-    parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=1001)
+    parser.add_argument("-e", "--exp_name", type=str, default="box-move")
+    parser.add_argument("-B", "--num_envs", type=int, default=8192)
+    parser.add_argument("--max_iterations", type=int, default=10001)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")
@@ -154,13 +145,14 @@ def main():
         open(f"{log_dir}/cfgs.pkl", "wb"),
     )
 
-    env = BucketTouchMoveEnv(
+    env = BoxMoveEnv(
         num_envs=args.num_envs,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,
         reward_cfg=reward_cfg,
         command_cfg=command_cfg,
     )
+    env.reset()
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
 
