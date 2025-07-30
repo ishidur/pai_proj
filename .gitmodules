@@ -1,0 +1,3 @@
+[submodule "model-based-diffusion"]
+	path = model-based-diffusion
+	url = git@github.com:ishidur/model-based-diffusion.git
